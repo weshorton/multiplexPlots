@@ -65,16 +65,40 @@ ui <- shinyUI(fluidPage(
                           #mainPanel(plotOutput("tester", width = 1000, height = 1000))
                           
                         )), # sidebarLayout, tabPanel
-               tabPanel("Venn Diagrams",
+               tabPanel("Pie Charts",
 
                         sidebarLayout(
                           sidebarPanel(
-                            selectInput(inputId = "Test",
-                                        label = "Test",
+                            h3("Pie Chart for Different Immune Cell Distributions"),
+                            br(),
+                            h4("Can select:"),
+                            tags$ol(tags$li("A single sample and a single group"), 
+                                    tags$li("Multiple samples and a single group"), 
+                                    tags$li("a single sample and multiple groups.")),
+                            br(),
+                            selectInput(inputId = "pieGrp",
+                                        label = h4("Select Which Group(s) to Plot"),
                                         choices = "all",
-                                        selected = "all")
+                                        selected = "all",
+                                        multiple = T),
+                            selectInput(inputId = "pieSample",
+                                        label = h4("Select Which Sample(s) to Plot"),
+                                        choices = "all",
+                                        selected = "all",
+                                        multiple = T),
+                            h4("Select How to Display Percentages"),
+                            tags$ol(tags$li("Character vector of calculations that will be left blank"),
+                                    tags$li("Numeric vector of indices of calculations that will be left blank"),
+                                    tags$li("NA - will print all percentages greater than 5%")),
+                            textInput(inputId = "piePct",
+                                      label = NULL,
+                                      value = NA),
+                            br(),
+                            actionButton(inputId = "doPlotPie", label = "Plot"),
+                            actionButton(inputId = "stopPlotPie", label = "Clear")
                           ), #sidebarPanel
-                          mainPanel(DT::dataTableOutput("calc"))
+                          mainPanel(plotOutput("fxnlPie", width = 1000, height = 1000))
+                          #mainPanel(DT::dataTableOutput("calc"))
                         )) # sidebarLayout, tabPanel
 
              ) # tabsetPanel

@@ -15,6 +15,7 @@
 library(shiny)
 library(data.table)
 library(DT)
+library(gridExtra)
 
 ### Code
 files_v <- list.files("./scripts/", full.names = T)
@@ -155,91 +156,41 @@ server <- shinyServer(function(input, output, session) {
   ########################
   ### Venn Diagram Tab ###~~~~~~~~~~~~~~~~~~~~~~~
   ########################
+
+  ## Update Group and Variable options
+  observe({
+    if (is.null(fxnlCalcData())){
+      return(NULL)
+    } else {
+      data <- fxnlCalcData()
+      updateSelectInput(session, "pieGrp", choices = unique(data[, Group]))
+      updateSelectInput(session, "pieSample", choices = c("all", setdiff(names(data), c("Group", "Calc"))), selected = "all")
+    }
+  }) # update pieGrp and pieSample
   
-  output$calc <- DT::renderDataTable({
-    if (is.null(fxnlCalcData())) {
-      print("fxnlCalcData() is null")
+  ## Plotting logic - set to TRUE if "plot" button is pressed, FALSE if 'clear' is pressed. Default is FALSE
+  piePlot_logical <- reactiveVal(value = FALSE)
+  observeEvent(input$doPlotPie, {piePlot_logical(TRUE)})
+  observeEvent(input$stopPlotPie, {piePlot_logical(FALSE)})
+  
+  ## Plot
+  output$fxnlPie <- renderPlot({
+    if (piePlot_logical()) {
+      print(fxnlCalcData()[1:5,1:5])
+      print(input$pieGrp)
+      print(input$pieSample)
+      print(functionalColors_dt[1:5,1:5])
+      print(input$piePct)
+      pies <- plotPie(fxnlCalcData(),
+                      group_v = input$pieGrp,
+                      sample_v = input$pieSample,
+                      color_dt = functionalColors_dt,
+                      pct_v = input$piePct)
+      grid.arrange(grobs = pies)
+    } else {
       return()
-    } else {
-      print("This is supposed to be output of standardCalcs():")
-      DT::datatable({
-        foo <- fxnlCalcData()
-        return(foo)
-      })
     }
   })
-  
-  ######################
-  ### Pie Chart Page ###
-  ######################
-  
-  # Obtain file
-  pieInFile <- reactive({
-    if (is.null(input$pieFile)){
-      #print("input$file is null")
-      return(NULL)
-    } else {
-      return(input$pieFile)
-      #print(input$pieFile)
-    } # fi
-  }) # pieInFile
-  
-  # Obtain data
-  pieInData <- reactive({
-    if (is.null(pieInFile())){
-      return(NULL)
-    } else {
-      fread(pieInFile()$datapath)
-    } # fi
-  }) # pieInData
-  
-  # Update grouping variable options
-  observe({
-    if (is.null(pieInData())){
-      return(NULL)
-    } else {
-      updateSelectInput(session, "pieGroup", choices = names(pieInData()))
-    }
-  }) # update pieGroup
-  
-  # Update pieGroup subset options
-  observe({
-    pieGroup_v <- input$pieGroup
-    # print(c("pieGroup_v: ", pieGroup_v))
-    if (pieGroup_v == ''){
-      pieOptions_v <- NULL
-    } else {
-      pieOptions_v <- pieInData()[,get(pieGroup_v)]
-    }
-    #print(c("pieOptions_v:", pieOptions_v))
-    updateSelectInput(session, "whichPieGroup", choices = c("all", unique(pieOptions_v)))
-  }) # update group subset
-  
-  # Pie chart toggle - default is FALSE (no plot output)
-  pie_plot_logical <- reactiveValues(result = FALSE)
-  
-  # Set logical to true, if "Create Plot" is pressed.
-  observeEvent(input$doPlotPie, {
-    pie_plot_logical$result <- TRUE
-  })
-  
-  # Reset to false if "Clear Plot" is pressed
-  observeEvent(input$stopPlotPie, {
-    pie_plot_logical$result <- FALSE
-  })
-  
-  # Pie chart output based on plot_logical status
-  output$pieChart <- renderPlot({
-    if (pie_plot_logical$result){
-      tcrPieChart(pieInData(), 
-                  grouping_column_v = input$pieGroup, 
-                  which_groups_v = input$whichPieGroup,
-                  divisions_v = unlist(strsplit(input$pieDivisions, split = ',')), 
-                  operation_v = input$pieOperation)
-      } else {
-        return()
-        } # fi
-    }) # renderPlot
   
   output$tester <- renderPlot(plot(1:10))
   
