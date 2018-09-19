@@ -1,0 +1,6 @@
+Cell	Hex	R	G	B	H	S	V
+T-Cell	#4691D3	27.5	56.9	82.7	208.1	66.8	82.7
+Lymphoid	#EC6C26	92.5	42.4	14.9	21.2	83.9	92.5
+Dendritic Cell	#9F9F9F	62.4	62.4	62.4	0	0	62.4
+Macrophage	#F5C02C	96.1	75.3	17.3	44.2	82	96.1
+Granuocyte	#6BB43F	42	70.6	24.7	97.4	65	70.6

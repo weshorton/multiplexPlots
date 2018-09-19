@@ -1,0 +1,18 @@
+Gate	Cell	Subtype
+CD45+ CD3+ CD8- FOXP3- RORGT- TBET- GATA3- (Th0)	T-Cell	Th0
+CD45+ CD3+ CD8- FOXP3 + (Treg)	T-Cell	Treg
+CD45+ CD3+ CD8- RORGT+ (Th17)	T-Cell	Th17
+CD45+ CD3+ CD8- FOXP3- RORGT- GATA3+ (Th2)	T-Cell	Th2
+CD45+ CD3+ CD8- TBET+ (Th1)	T-Cell	Th1
+CD45+CD3+CD8+	T-Cell	CD8
+CD45+CD3-NKp46+ (NK cells)	Lymphoid	NK
+CD45+ CD3- CD20+ (B Cells)	Lymphoid	B cell
+CD45+ CD3/20/NKP46- CD66b- Tryptase- CD68- MHCII- (myeloid other)	Dendritic Cell	Myeloid other
+CD45+ CD3/20/NKp46- CD66B- Tryptase- CD68+ CSF1R- CD163-	Macrophage	CD163- Myelomono
+CD45+ CD3/20/NKp46- CD66B- Tryptase- CD68+ CSF1R- CD163+	Macrophage	CD163+ Myelomono
+CD45+ CD3/20/NKp46- CD66B- Tryptase- CD68+ CSF1R+ CD163-	Macrophage	CD163- TAM
+CD45+ CD3/20/NKp46- CD66B- Tryptase- CD68+ CSF1R+ CD163+	Macrophage	CD163+ TAM
+CD45+ CD3/CD20/NKp46-CD66b- Tryptase- CD68- MHCII+ CSF1R- DCSIGN- DCLAMP-	Dendritic Cell	immature DC
+CD45+ CD3/CD20/NKp46- CD66b- Tryptase- CD68- MHCII+ CSF1R- DCSIGN- DC-LAMP+	Dendritic Cell	mature DC
+CD45+ CD3/CD20/NKp46- CD66b+	Granulocyte	neut/eos
+CD45+ CD3/CD20/NKp46- Tryptase+	Granulocyte	mast cell
