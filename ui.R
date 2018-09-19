@@ -34,7 +34,7 @@ ui <- shinyUI(fluidPage(
                             fileInput(inputId = "fxnlFile", label = h4("Select Input Data File"), placeholder = "/path/to/fxnl.xlsx"),
                             ## Select View
                             radioButtons("dataSelect", label = h4("Select Which Data to View"),
-                                         choices = list("Raw" = "raw", "Summarized" = "sum"),
+                                         choices = list("Raw" = "raw", "Summarized" = "sum", "Calculations" = "calc"),
                                          selected = "raw"),
                             #br(),
                             h4("Select Optional Subsets to View"),
@@ -71,7 +71,7 @@ ui <- shinyUI(fluidPage(
                                         choices = "all",
                                         selected = "all")
                           ), #sidebarPanel
-                          mainPanel(plotOutput("tester", width = 1000, height = 1000))
+                          mainPanel(DT::dataTableOutput("calc"))
                         )) # sidebarLayout, tabPanel
 
              ) # tabsetPanel

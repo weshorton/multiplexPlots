@@ -24,6 +24,12 @@ source("./ui.R")
 ### Options
 options(shiny.maxRequestSize=1000*1024^2)
 
+### Reference
+cellTypeColors_dt <- fread("./data/cellTypeColors.txt")
+functionalColors_dt <- fread("./data/functionalColors.txt")
+subTypeColors_dt <- fread("./data/subTypeColors.txt")
+tCellColors_dt <- fread("./data/tCellColors.txt")
+
 # Define server logic required to draw a histogram
 server <- shinyServer(function(input, output, session) {
   
@@ -32,7 +38,7 @@ server <- shinyServer(function(input, output, session) {
   ############################
   
   #####################
-  ### VIEW DATA TAB ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ### VIEW DATA TAB ###~~~~~~~~~~~~~~~~~~~~~~~~~~
   #####################
   
   ## Obtain File
@@ -56,7 +62,7 @@ server <- shinyServer(function(input, output, session) {
       #fread(fxnlInFile()$datapath)
     }})
   
-  ## Select which data
+  ## Select which data to view
   whichData <- reactiveVal()
   whichData("raw")
   observeEvent(input$dataSelect, {whichData(input$dataSelect)})
@@ -106,6 +112,33 @@ server <- shinyServer(function(input, output, session) {
       } else if (input$Samples != "all") {data <- data[,mget(c("Population", "Gate", input$Samples))]}
       data
     })}})
+  
+  ########################
+  ### Venn Diagram Tab ###~~~~~~~~~~~~~~~~~~~~~~~
+  ########################
+  
+  ### Perform standard calculations
+  fxnlCalcData <- reactive({
+    if (is.null(fxnlInData())) {
+      print("fxnlInData is null in calc reactive")
+      return(NULL)
+    } else {
+      standardCalcs(sum_dt = fxnlInData()[["raw"]])
+    }
+  })
+  
+  output$calc <- DT::renderDataTable({
+    if (is.null(fxnlCalcData())) {
+      print("fxnlCalcData() is null")
+      return()
+    } else {
+      print("This is supposed to be output of standardCalcs():")
+      DT::datatable({
+        foo <- fxnlCalcData()
+        return(foo)
+      })
+    }
+  })
   
   ######################
   ### Pie Chart Page ###
