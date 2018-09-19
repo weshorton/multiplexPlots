@@ -185,8 +185,8 @@ standardCalcs <- function(sum_dt, calcs_v = c("pctCD45", "majorImmune", "PctCD8.
                  "PD-1+" = "CD45+CD3+CD8-PD1+")
   cd3Negcd68PosRows_v <- c("CD45+CD3-CD68+IL-10+", "CD45+CD3-CD68+")
   
-  ## Get slides
-  if (is.null(slides_v)) slides_v <- grep("[SX][0-9]*$", colnames(sum_dt), value = T)
+  ## Get slides - have seen S100, X100, and 100 so far
+  if (is.null(slides_v)) slides_v <- grep("[SX][0-9]*$|[0-9]+$", colnames(sum_dt), value = T)
   
   ## Begin output matrix
   out_lsv <- list()
