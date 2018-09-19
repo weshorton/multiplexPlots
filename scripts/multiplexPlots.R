@@ -82,7 +82,7 @@ plotPie <- function(data_dt, groupCol_v = "Group", calcCol_v = "Calc", group_v, 
   ## Make percentage labels
   labels_mat <- sapply(sample_v, function(x) {
     pctLab_v <- paste0(round(merge_dt[[x]]), "%")
-    if (is.na(pct_v)){
+    if (is.na(pct_v) | pct_v == ""){
       tooSmall_v <- which(merge_dt[[x]] < 5)
     } else if (is.character(pct_v)) {
       tooSmall_v <- which(merge_dt[[calcCol_v]] %in% pct_v)
@@ -106,13 +106,15 @@ plotPie <- function(data_dt, groupCol_v = "Group", calcCol_v = "Calc", group_v, 
     
     print("One sample and one group")
     name_v <- paste0(sample_v, "_", group_v)
-    plots_lsgg[[name_v]] <- pieFxn(merge_dt, groupCol_v, group_v, calcCol_v, sample_v, paste0(sample_v, "_pct"), calcCol_v, title_v, size = 12)
+    plots_lsgg[[name_v]] <- pieFxn(merge_dt = merge_dt, groupCol_v = groupCol_v, group_v = group_v, calcCol_v = calcCol_v, sample_v = sample_v, 
+                                   pct_v = paste0(sample_v, "_pct"), fill = calcCol_v, title_v = title_v, subtitle_v = "", size = 12)
     
   } else if (length(group_v) > 1 & length(sample_v) > 1) {
     
     cat(sprintf("%s sample(s) and %s group(s)\n", length(sample_v), length(group_v)))
     plots_lslsgg <- lapply(sample_v, function(x) {
       name_v <- paste0(x, "_", group_v)
+      title_v <- paste0("Patient: ", x)
       tmp <- lapply(group_v, function(y) pieFxn(merge_dt, groupCol_v, y, calcCol_v, x, paste0(x, "_pct"), calcCol_v, title_v, y, size = 4))
       names(tmp) <- name_v
       return(tmp)
@@ -129,7 +131,8 @@ plotPie <- function(data_dt, groupCol_v = "Group", calcCol_v = "Calc", group_v, 
   } else if (length(sample_v) > 1) {
     
     cat(sprintf("%s sample(s) and %s group(s)\n", length(sample_v), length(group_v)))
-    plots_lsgg <- lapply(sample_v, function(x) pieFxn(merge_dt, groupCol_v, group_v, calcCol_v, x, paste0(x, "_pct"), calcCol_v, title_v, group_v, size = 4))
+    plots_lsgg <- lapply(sample_v, function(x) pieFxn(merge_dt, groupCol_v, group_v, calcCol_v, x, paste0(x, "_pct"), calcCol_v, 
+                                                      title_v = paste0("Patient: ", x), group_v, size = 4))
     names(plots_lsgg) <- paste0(sample_v, "_", group_v)
       
   } else {
@@ -147,6 +150,14 @@ pieFxn <- function(merge_dt, groupCol_v, group_v, calcCol_v, sample_v, pct_v, fi
   ## Subset
   getCols_v <- c(groupCol_v, calcCol_v, sample_v, paste0(sample_v, "_pct"), "Hex", "Legend")
   data_dt <- merge_dt[get(groupCol_v) == group_v[1], mget(getCols_v)]
+  ## Fix columns - can't have variables that start with a number
+  grepNum_v <- grep("^[0-9]", sample_v)
+  if (length(grepNum_v) > 0) {
+    whichCols_v <- which(colnames(data_dt) %in% c(sample_v, pct_v))
+    sample_v <- paste0("S", sample_v)
+    pct_v <- paste0("S", pct_v)
+    colnames(data_dt)[whichCols_v] <- paste0("S", colnames(data_dt)[whichCols_v])
+  }
   ## Plot
   ggplot(data = data_dt, aes_string(x = groupCol_v, y = sample_v, fill = calcCol_v)) +
     geom_bar(width = 1, stat = "identity") +
