@@ -34,19 +34,21 @@ ui <- shinyUI(fluidPage(
                             fileInput(inputId = "fxnlFile", label = h4("Select Input Data File"), placeholder = "/path/to/fxnl.xlsx"),
                             ## Select View
                             radioButtons("dataSelect", label = h4("Select Which Data to View"),
-                                         choices = list("Raw" = "raw", "Summarized" = "sum", "Calculations" = "calc"),
+                                         choices = list("Raw" = "raw", "Summarized" = "sum", "Calculated" = "calc"),
                                          selected = "raw"),
                             #br(),
                             h4("Select Optional Subsets to View"),
+                            h6("Population and Gate are options for the 'Raw' and 'Summarized' views, while Group and Calculation are for the 'Calculated' view.
+                               Samples can be used for all views."),
                             ## Select Populations
                             selectInput(inputId = "Population",
-                                        label = "Populations",
+                                        label = "Population/Group",
                                         choices = "all",
                                         selected = "all",
                                         multiple = T),
                             ## Select Gates
                             selectInput(inputId = "Gate",
-                                        label = "Gates",
+                                        label = "Gate/Calculation",
                                         choices = "all",
                                         selected = "all",
                                         multiple = T),
@@ -56,6 +58,7 @@ ui <- shinyUI(fluidPage(
                                         choices = "all", 
                                         selected = "all",
                                         multiple = T)
+                            ## Select 
                           ), # sidebarPanel
                           
                           mainPanel(DT::dataTableOutput("fxnl")) # mainPanel

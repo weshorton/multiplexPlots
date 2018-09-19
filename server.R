@@ -57,10 +57,18 @@ server <- shinyServer(function(input, output, session) {
       return(NULL)
     } else {
       data_ls <- readRaw(fxnlInFile()$datapath)
-      print(data_ls$raw[1:5,])
       return(data_ls)
-      #fread(fxnlInFile()$datapath)
     }})
+  
+  ### Perform standard calculations
+  fxnlCalcData <- reactive({
+    if (is.null(fxnlInData())) {
+      print("fxnlInData is null in calc reactive")
+      return(NULL)
+    } else {
+      standardCalcs(sum_dt = fxnlInData()[["sum"]])
+    }
+  })
   
   ## Select which data to view
   whichData <- reactiveVal()
@@ -72,9 +80,15 @@ server <- shinyServer(function(input, output, session) {
     if (is.null(fxnlInData())) {
       return(NULL)
     } else {
-      currData <- fxnlInData()[[whichData()]]
-      updateSelectInput(session, "Population", choices = c("all", unique(currData[,get("Population")])), selected = "all")
-      updateSelectInput(session, "Samples", choices = c("all", setdiff(names(currData), c("Population", "Gate"))), selected = "all")
+      if (whichData() %in% c("raw", "sum")) {
+        currData <- fxnlInData()[[whichData()]]
+        updateSelectInput(session, "Population", choices = c("all", unique(currData[,get("Population")])), selected = "all")
+        updateSelectInput(session, "Samples", choices = c("all", setdiff(names(currData), c("Population", "Gate"))), selected = "all")
+      } else if (whichData() == "calc") {
+        currData <- fxnlCalcData()
+        updateSelectInput(session, "Population", choices = c("all", unique(currData[,get("Group")])), selected = "all")
+        updateSelectInput(session, "Samples", choices = c("all", setdiff(names(currData), c("Group", "Calc"))), selected = "all")
+      }
     }})
   
   # Subset Gate
@@ -82,50 +96,65 @@ server <- shinyServer(function(input, output, session) {
     if (is.null(fxnlInData())) {
       return(NULL)
     } else {
-      currData <- fxnlInData()[[whichData()]]
+      ## Need to set data and column depending on which View is selected
+      if (whichData() %in% c("raw", "sum")){
+        currData <- fxnlInData()[[whichData()]]; currCol <- "Gate"; currSubCol <- "Population"
+      } else if (whichData() %in% c("calc")) {
+        currData <- fxnlCalcData(); currCol <- "Calc"; currSubCol <- "Group"
+      }
+      
+      ## Now need to dynamically update the gate/calc column based on the population/group selection
       if (is.null(input$Population)) {
         return(NULL)
       } else if (input$Population == "all") {
-        currGate_v <- unique(currData[,get("Gate")])
+        currGate_v <- unique(currData[,get(currCol)])
       } else {
-        currGate_v <- unique(currData[Population %in% input$Population, get("Gate")])
+        currGate_v <- unique(currData[get(currSubCol) %in% input$Population, get(currCol)])
       }
+        
+      ## Update selection
       updateSelectInput(session, "Gate", choices = c("all", currGate_v), selected = "all")
     }})
   
   ## Output
   output$fxnl <- DT::renderDataTable({
     if (is.null(fxnlInData())){
-      print("fxnlIndata is null in renderDataTable")
+      print("fxnlInData is null in renderDataTable")
       return()
     } else {
       DT::datatable({
-      data <- fxnlInData()[[whichData()]]
-      if (is.null(input$Population)) {
-        data <- data
-        } else if (input$Population != "all") { data <- data[Population %in% input$Population,]}
-      if (is.null(input$Gate)) {
-        data <- data
-      }  else if (input$Gate != "all") { data <- data[Gate %in% input$Gate,]}
-      if (is.null(input$Samples)) {
-        data <- data
-      } else if (input$Samples != "all") {data <- data[,mget(c("Population", "Gate", input$Samples))]}
-      data
+        ## Set data and columns based on which View
+        if (whichData() %in% c("raw", "sum")) {
+          currData <- fxnlInData()[[whichData()]]; currCol <- "Gate"; currSubCol <- "Population"
+        } else if (whichData() %in% c("calc")) {
+          currData <- fxnlCalcData(); currCol <- "Calc"; currSubCol <- "Group"
+        }
+        
+        ## Subset Population/Group column based on selection
+        if (is.null(input$Population)) {
+          currData <- currData
+        } else if (input$Population != "all") { 
+          currData <- currData[get(currSubCol) %in% input$Population,]
+        }
+        
+        ## Subset gate/calc column based on selection
+        if (is.null(input$Gate)) {
+          currData <- currData
+        } else if (input$Gate != "all") { 
+          currData <- currData[get(currCol) %in% input$Gate,]
+        }
+        
+        ## Subset sample column based on selection
+        if (is.null(input$Samples)) {
+          currData <- currData
+        } else if (input$Samples != "all") {
+          currData <- currData[,mget(c(currSubCol, currCol, input$Samples))]}
+      currData
     })}})
   
   ########################
   ### Venn Diagram Tab ###~~~~~~~~~~~~~~~~~~~~~~~
   ########################
-  
-  ### Perform standard calculations
-  fxnlCalcData <- reactive({
-    if (is.null(fxnlInData())) {
-      print("fxnlInData is null in calc reactive")
-      return(NULL)
-    } else {
-      standardCalcs(sum_dt = fxnlInData()[["raw"]])
-    }
-  })
   
   output$calc <- DT::renderDataTable({
     if (is.null(fxnlCalcData())) {
