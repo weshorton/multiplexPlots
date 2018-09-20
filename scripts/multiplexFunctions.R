@@ -400,7 +400,7 @@ readML <- function(input_xlsx, sheetName_v = "raw data", panelCol_v = "Panel", g
   require(xlsx)
   
   ## Read data
-  data_dt <- as.data.table(read.xlsx2(file = input_xlsx, sheetName = sheetName_v))
+  data_dt <- as.data.table(read_excel(path = input_xlsx, sheet = sheetName_v))
   
   ## Fix column classes
   dataCols_v <- colnames(data_dt)[!(colnames(data_dt) %in% c(panelCol_v, gateCol_v, infoCol_v))]
