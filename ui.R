@@ -18,13 +18,18 @@ ui <- shinyUI(fluidPage(
   # Divide into panels
   tabsetPanel(
     
-    #################
-    ### Data Page ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    #################
+    ########################
+    ### FUNCTIONAL PANEL ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ########################
     
     tabPanel("Functional Panel",
              
              tabsetPanel(
+               
+               #################
+               ### VIEW DATA ###~~~~~~~~~~~~~~~~~
+               #################
+               
                tabPanel("View Data",
                         
                         sidebarLayout(
@@ -65,6 +70,11 @@ ui <- shinyUI(fluidPage(
                           #mainPanel(plotOutput("tester", width = 1000, height = 1000))
                           
                         )), # sidebarLayout, tabPanel
+               
+               ##################
+               ### PIE CHARTS ###~~~~~~~~~~~~~~~~
+               ##################
+               
                tabPanel("Pie Charts",
 
                         sidebarLayout(
@@ -104,95 +114,92 @@ ui <- shinyUI(fluidPage(
              ) # tabsetPanel
     ),
              
-    ######################
-    ### Pie Chart Page ###
-    ######################
-    tabPanel("Top Clone Pie Charts",
-             
-             # Sidebar with all input options and plot space
-             sidebarLayout(
-               
-               sidebarPanel(
-                 # File import
-                 fileInput(inputId = "pieFile", label = h3("File input"), placeholder = "/path/to/aggregate_clone_files.txt"),
-      
-                 # Select Grouping Variable
-                 selectInput(inputId = "pieGroup",
-                             label = "Grouping Variable:",
-                             choices = ""),
-      
-                 # Select Members of Grouping Variable
-                 selectInput(inputId = "whichPieGroup",
-                             label = "Group Subset to Plot:",
-                             choices = "", 
-                             multiple = T),
-      
-                 # Select Divisions
-                 textInput(inputId = "pieDivisions", 
-                           label = h3("Comma-separated list of top clones or ranges to subset by. (e.g. 1, 2, 3 or 1:10, 11:30, 31:50)"),
-                           value = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10"),
-      
-                 # Select operation
-                 selectInput(inputId = "pieOperation",
-                             label = h3("Summary function to use:"),
-                             choices = list("Mean" = "mean", "Median" = "median")),
-      
-                 # Provide plotting action button and wait button
-                 actionButton(inputId = "doPlotPie", label = "Create Plot"),
-                 actionButton(inputId = "stopPlotPie", label = "Clear Plot") # New
-                 ) # sidebarPanel
-               ,
-               
-               mainPanel(
-                 plotOutput("pieChart", width = 1000, height = 1000)
-                 ) # mainPanel
-               ) # sidebarLayout
-             ), # Pie Chart Tab Panel
+    ##############################
+    ### MYELOID/LYMPHOID PANEL ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ##############################
     
-    ########################
-    ### Stacked Bar Page ###
-    ########################
-    tabPanel("Top Clone Stacked Bar",
+    tabPanel("Myeloid/Lymphoid Panel",
              
-             # Sidebar with input options
-             sidebarLayout(
+             tabsetPanel(
                
-               sidebarPanel(
-                 # File import
-                 fileInput(inputId = "sBarFile", label = h3("File input"), placeholder = "/path/to/aggregate_clone_files.txt"),
-                 
-                 # Select Grouping Variable
-                 selectInput(inputId = "sBarGroup",
-                             label = "Grouping Variable:",
-                             choices = ""),
-                 
-                 # Select Members of Grouping Variable
-                 selectInput(inputId = "whichsBarGroup",
-                             label = "Group Subset to Plot:",
-                             choices = "", 
-                             multiple = T),
-                 
-                 # Select Divisions
-                 textInput(inputId = "sBarDivisions", 
-                           label = h3("Comma-separated list of top clones or ranges to subset by. (e.g. 1, 2, 3 or 1:10, 11:30, 31:50)"),
-                           value = "1:10, 11:30, 31:50"),
-                 
-                 # Select operation
-                 selectInput(inputId = "sBarOperation",
-                             label = h3("Summary function to use:"),
-                             choices = list("Mean" = "mean", "Median" = "median")),
-                 
-                 # Provide plotting action button and wait button
-                 actionButton(inputId = "doPlotsBar", label = "Create Plot"),
-                 actionButton(inputId = "stopPlotsBar", label = "Clear Plot") # New
-               ) # sidebarPanel
+               #################
+               ### VIEW DATA ###~~~~~~~~~~~~~~~~~
+               #################
                
-               ,
+               tabPanel("View Data",
+                        
+                        sidebarLayout(
+                          
+                          sidebarPanel(
+                            ## Load file
+                            fileInput(inputId = "mlFile", label = h4("Select Input Data File"), placeholder = "/path/to/myeloid_lymphoid.xlsx"),
+                            h4("Select Optional Subsets to View"),
+                            ## Select Populations
+                            selectInput(inputId = "Panel",
+                                        label = "Panel",
+                                        choices = "all",
+                                        selected = "all",
+                                        multiple = T),
+                            ## Select Gates
+                            selectInput(inputId = "Gate",
+                                        label = "Gate",
+                                        choices = "all",
+                                        selected = "all",
+                                        multiple = T),
+                            ## Select columns
+                            selectInput(inputId = "Samples",
+                                        label = "Samples",
+                                        choices = "all", 
+                                        selected = "all",
+                                        multiple = T)
+                            ## Select 
+                            ), # sidebarPanel
+                          
+                          mainPanel(DT::dataTableOutput("ml")) # mainPanel
+                          #mainPanel(plotOutput("tester", width = 1000, height = 1000))
+                          
+                        )), # sidebarLayout, tabPanel
                
-               mainPanel(
-                 plotOutput("stackedBarPlot", width = 1000, height = 1000)
-                 ) # mainPanel
-               ) # sidebarLayout
-             ) # Stacked Bar Tab Panel
-    ) # tabsetPanel
+               ##################
+               ### PIE CHARTS ###~~~~~~~~~~~~~~~~
+               ##################
+               
+               tabPanel("Stacked Bar Chart",
+                        
+                        sidebarLayout(
+                          sidebarPanel(
+                            h3("Pie Chart for Different Immune Cell Distributions"),
+                            br(),
+                            h4("Can select:"),
+                            tags$ol(tags$li("A single sample and a single group"), 
+                                    tags$li("Multiple samples and a single group"), 
+                                    tags$li("a single sample and multiple groups.")),
+                            br(),
+                            selectInput(inputId = "pieGrp",
+                                        label = h4("Select Which Group(s) to Plot"),
+                                        choices = "all",
+                                        selected = "all",
+                                        multiple = T),
+                            selectInput(inputId = "pieSample",
+                                        label = h4("Select Which Sample(s) to Plot"),
+                                        choices = "all",
+                                        selected = "all",
+                                        multiple = T),
+                            h4("Select How to Display Percentages"),
+                            tags$ol(tags$li("Character vector of calculations that will be left blank"),
+                                    tags$li("Numeric vector of indices of calculations that will be left blank"),
+                                    tags$li("NA - will print all percentages greater than 5%")),
+                            textInput(inputId = "piePct",
+                                      label = NULL,
+                                      value = NA),
+                            br(),
+                            actionButton(inputId = "doPlotPie", label = "Plot"),
+                            actionButton(inputId = "stopPlotPie", label = "Clear")
+                          ), #sidebarPanel
+                          mainPanel(plotOutput("fxnlPie", width = 1000, height = 1000))
+                          #mainPanel(DT::dataTableOutput("calc"))
+                        )) # sidebarLayout, tabPanel
+             ) # tabsetPanel    
+    ) # tabPanel
+  ) # tabset panel
 )) # fluidPage
