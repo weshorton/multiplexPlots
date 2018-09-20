@@ -76,7 +76,6 @@ server <- shinyServer(function(input, output, session) {
   whichData("raw")
   observeEvent(input$dataSelect, {whichData(input$dataSelect)})
   
-  ## Options to subset
   observe({
     if (is.null(fxnlInData())) {
       return(NULL)
@@ -92,7 +91,7 @@ server <- shinyServer(function(input, output, session) {
       }
     }})
   
-  # Subset Gate
+  ## Options to Subset
   observe({
     if (is.null(fxnlInData())) {
       return(NULL)
@@ -112,10 +111,10 @@ server <- shinyServer(function(input, output, session) {
       } else {
         currGate_v <- unique(currData[get(currSubCol) %in% input$Population, get(currCol)])
       }
-        
+      
       ## Update selection
       updateSelectInput(session, "Gate", choices = c("all", currGate_v), selected = "all")
-    }})
+      }})
   
   ## Output
   output$fxnl <- DT::renderDataTable({
@@ -134,14 +133,14 @@ server <- shinyServer(function(input, output, session) {
         ## Subset Population/Group column based on selection
         if (is.null(input$Population)) {
           currData <- currData
-        } else if (input$Population != "all") { 
+        } else if (input$Population != "all") {
           currData <- currData[get(currSubCol) %in% input$Population,]
         }
         
         ## Subset gate/calc column based on selection
         if (is.null(input$Gate)) {
           currData <- currData
-        } else if (input$Gate != "all") { 
+        } else if (input$Gate != "all") {
           currData <- currData[get(currCol) %in% input$Gate,]
         }
         
@@ -150,14 +149,14 @@ server <- shinyServer(function(input, output, session) {
           currData <- currData
         } else if (input$Samples != "all") {
           currData <- currData[,mget(c(currSubCol, currCol, input$Samples))]}
-      currData
+        currData
     })}})
   
   ########################
-  ### Venn Diagram Tab ###~~~~~~~~~~~~~~~~~~~~~~~
+  ### VENN DIAGRAM TAB ###~~~~~~~~~~~~~~~~~~~~~~~
   ########################
-
-  ## Update Group and Variable options
+  
+  # Update grouping variable options
   observe({
     if (is.null(fxnlCalcData())){
       return(NULL)
@@ -190,9 +189,18 @@ server <- shinyServer(function(input, output, session) {
     } else {
       return()
     }
-  })
-  
+    
   output$tester <- renderPlot(plot(1:10))
+  
+  ##################################
+  ### MYELOID/LYMPHOID PANEL TAB ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ##################################
+  
+  #####################
+  ### VIEW DATA TAB ###~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #####################
+  
+  
   
   ########################
   ### Stacked Bar Page ###
