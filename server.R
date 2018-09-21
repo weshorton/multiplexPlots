@@ -16,6 +16,7 @@ library(shiny)
 library(data.table)
 library(DT)
 library(gridExtra)
+library(writexl)
 
 ### Code
 files_v <- list.files("./scripts/", full.names = T)
@@ -76,22 +77,23 @@ server <- shinyServer(function(input, output, session) {
   whichData("raw")
   observeEvent(input$dataSelect, {whichData(input$dataSelect)})
   
+  ## Update available Population and Sample based on which input is selected
   observe({
     if (is.null(fxnlInData())) {
       return(NULL)
     } else {
       if (whichData() %in% c("raw", "sum")) {
         currData <- fxnlInData()[[whichData()]]
-        updateSelectInput(session, "Population", choices = c("all", unique(currData[,get("Population")])), selected = "all")
-        updateSelectInput(session, "Samples", choices = c("all", setdiff(names(currData), c("Population", "Gate"))), selected = "all")
+        updateSelectInput(session, "fxnlPop", choices = c("all", unique(currData[,get("Population")])), selected = "all")
+        updateSelectInput(session, "fxnlSamples", choices = c("all", setdiff(names(currData), c("Population", "Gate"))), selected = "all")
       } else if (whichData() == "calc") {
         currData <- fxnlCalcData()
-        updateSelectInput(session, "Population", choices = c("all", unique(currData[,get("Group")])), selected = "all")
-        updateSelectInput(session, "Samples", choices = c("all", setdiff(names(currData), c("Group", "Calc"))), selected = "all")
+        updateSelectInput(session, "fxnlPop", choices = c("all", unique(currData[,get("Group")])), selected = "all")
+        updateSelectInput(session, "fxnlSamples", choices = c("all", setdiff(names(currData), c("Group", "Calc"))), selected = "all")
       }
     }})
   
-  ## Options to Subset
+  ## Update Gates available based on which input is selected
   observe({
     if (is.null(fxnlInData())) {
       return(NULL)
@@ -104,58 +106,131 @@ server <- shinyServer(function(input, output, session) {
       }
       
       ## Now need to dynamically update the gate/calc column based on the population/group selection
-      if (is.null(input$Population)) {
+      if (is.null(input$fxnlPop)) {
         return(NULL)
-      } else if (input$Population == "all") {
+      } else if (input$fxnlPop == "all") {
         currGate_v <- unique(currData[,get(currCol)])
       } else {
-        currGate_v <- unique(currData[get(currSubCol) %in% input$Population, get(currCol)])
+        currGate_v <- unique(currData[get(currSubCol) %in% input$fxnlPop, get(currCol)])
       }
       
       ## Update selection
-      updateSelectInput(session, "Gate", choices = c("all", currGate_v), selected = "all")
+      updateSelectInput(session, "fxnlGate", choices = c("all", currGate_v), selected = "all")
       }})
   
-  ## Output
-  output$fxnl <- DT::renderDataTable({
+  ## Update output filename based on the selected arguments
+  observe({
+    if (is.null(fxnlInData())) {
+      return(NULL)
+    } else {
+      ## Just "fxnl" and either "raw/sum/calc"
+      baseName_v <- paste("fxnl", whichData(), sep = "_-_")
+      
+      ## Add population/group, if specified
+      if (!is.null(input$fxnlPop)){ 
+        if (input$fxnlPop[1] != "all") {
+          temp <- paste(input$fxnlPop, collapse = "-")
+          baseName_v <- paste0(baseName_v, "_-_", temp)
+        }
+      } # fi fxnlPop
+      
+      ## Add gate/calc, if specified
+      if (!is.null(input$fxnlGate)){
+        if (input$fxnlGate[1] != "all"){
+          temp <- paste(input$fxnlGate, collapse = "-")
+          baseName_v <- paste0(baseName_v, "_-_", temp)
+        } 
+      } # fi fxnlGate
+      
+      ## Add samples, if specified
+      if (!is.null(input$fxnlSamples)) {
+        if (input$fxnlSamples[1] != "all"){
+          temp <- paste(input$fxnlSamples, collapse = "-")
+          baseName_v <- paste0(baseName_v, "_-_", temp)
+        }
+      } # fi fxnlSamples
+      ## Remove spaces
+      baseName_v <- gsub(" ", "_", baseName_v)
+      ## Add extension
+      baseName_v <- paste0(baseName_v, ".xlsx")
+      ## Update
+      cat(sprintf("fxnlOutName should be set as %s\n", baseName_v))
+      updateTextInput(session, "fxnlOutName", value = baseName_v)
+    }
+  }) # update filename
+  
+  ## Get current view
+  outputData <- reactive({
     if (is.null(fxnlInData())){
+      return(NULL)
+    } else {
+      ## Set data and columns based on which View
+      if (whichData() %in% c("raw", "sum")) {
+        currData <- fxnlInData()[[whichData()]]; currCol <- "Gate"; currSubCol <- "Population"
+      } else if (whichData() %in% c("calc")) {
+        currData <- fxnlCalcData(); currCol <- "Calc"; currSubCol <- "Group"
+      }
+      
+      ## Subset Population/Group column based on selection
+      if (is.null(input$fxnlPop)) {
+        currData <- currData
+      } else if (input$fxnlPop[1] != "all") {
+        currData <- currData[get(currSubCol) %in% input$fxnlPop,]
+      }
+      
+      ## Subset gate/calc column based on selection
+      if (is.null(input$fxnlGate)) {
+        currData <- currData
+      } else if (input$fxnlGate[1] != "all") {
+        currData <- currData[get(currCol) %in% input$fxnlGate,]
+      }
+      
+      ## Subset sample column based on selection
+      if (is.null(input$fxnlSamples)) {
+        currData <- currData
+      } else if (input$fxnlSamples[1] != "all") {
+        currData <- currData[,mget(c(currSubCol, currCol, input$fxnlSamples))]}
+      currData
+    }
+  })
+  
+  ## Output the table
+  output$fxnl <- DT::renderDataTable({
+    if (is.null(fxnlInData())) {
       print("fxnlInData is null in renderDataTable")
       return()
     } else {
-      DT::datatable({
-        ## Set data and columns based on which View
-        if (whichData() %in% c("raw", "sum")) {
-          currData <- fxnlInData()[[whichData()]]; currCol <- "Gate"; currSubCol <- "Population"
-        } else if (whichData() %in% c("calc")) {
-          currData <- fxnlCalcData(); currCol <- "Calc"; currSubCol <- "Group"
-        }
-        
-        ## Subset Population/Group column based on selection
-        if (is.null(input$Population)) {
-          currData <- currData
-        } else if (input$Population != "all") {
-          currData <- currData[get(currSubCol) %in% input$Population,]
-        }
-        
-        ## Subset gate/calc column based on selection
-        if (is.null(input$Gate)) {
-          currData <- currData
-        } else if (input$Gate != "all") {
-          currData <- currData[get(currCol) %in% input$Gate,]
-        }
-        
-        ## Subset sample column based on selection
-        if (is.null(input$Samples)) {
-          currData <- currData
-        } else if (input$Samples != "all") {
-          currData <- currData[,mget(c(currSubCol, currCol, input$Samples))]}
-        currData
-    })}})
+      DT::datatable(outputData())
+    }
+  })
+
+  ## Reactive value
+  message_v <- reactiveVal()
+  message_v("blank")
+  
+  ## Write table
+  observeEvent(input$saveFxnl, {
+    ## Make name
+    out_v <- file.path(input$fxnlOutDir, input$fxnlOutName)
+    ## Make message
+    message_v(paste0("Saved current view to: ", out_v))
+    ## Write table
+    write_xlsx(x = outputData(), path = out_v)
+  })
+  
+  ## Update user
+  output$fxnlUpdate <- renderText({
+    if (message_v() == "blank") {
+      return(NULL)
+    } else {
+      message_v()
+    }
+  })
   
   ########################
   ### VENN DIAGRAM TAB ###~~~~~~~~~~~~~~~~~~~~~~~
   ########################
-  
+
   # Update grouping variable options
   observe({
     if (is.null(fxnlCalcData())){
@@ -166,12 +241,12 @@ server <- shinyServer(function(input, output, session) {
       updateSelectInput(session, "pieSample", choices = c("all", setdiff(names(data), c("Group", "Calc"))), selected = "all")
     }
   }) # update pieGrp and pieSample
-  
+
   ## Plotting logic - set to TRUE if "plot" button is pressed, FALSE if 'clear' is pressed. Default is FALSE
   piePlot_logical <- reactiveVal(value = FALSE)
   observeEvent(input$doPlotPie, {piePlot_logical(TRUE)})
   observeEvent(input$stopPlotPie, {piePlot_logical(FALSE)})
-  
+
   ## Plot
   output$fxnlPie <- renderPlot({
     if (piePlot_logical()) {
@@ -188,90 +263,90 @@ server <- shinyServer(function(input, output, session) {
       grid.arrange(grobs = pies)
     } else {
       return()
-    }
-    
+    }})
+
   output$tester <- renderPlot(plot(1:10))
-  
+
   ##################################
   ### MYELOID/LYMPHOID PANEL TAB ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ##################################
-  
+
   #####################
   ### VIEW DATA TAB ###~~~~~~~~~~~~~~~~~~~~~~~~~~
   #####################
-  
-  
-  
-  ########################
-  ### Stacked Bar Page ###
-  ########################
-  # Obtain file
-  sBarInFile <- reactive({
-    if (is.null(input$sBarFile)){
-      #print("input$file is null")
-      return(NULL)
-    } else {
-      return(input$sBarFile)
-      #print(input$pieFile)
-    } # fi
-  }) # pieInFile
-  
-  # Obtain data
-  sBarInData <- reactive({
-    if (is.null(sBarInFile())){
-      return(NULL)
-    } else {
-      fread(sBarInFile()$datapath)
-    } # fi
-  }) # pieInData
-  
-  # Update grouping variable options
-  observe({
-    if (is.null(sBarInData())){
-      return(NULL)
-    } else {
-      updateSelectInput(session, "sBarGroup", choices = names(sBarInData()))
-    }
-  }) # update pieGroup
-  
-  # Update pieGroup subset options
-  observe({
-    sBarGroup_v <- input$sBarGroup
-    # print(c("pieGroup_v: ", pieGroup_v))
-    if (sBarGroup_v == ''){
-      sBarOptions_v <- NULL
-    } else {
-      sBarOptions_v <- sBarInData()[,get(sBarGroup_v)]
-    }
-    #print(c("sBarOptions_v:", pieOptions_v))
-    updateSelectInput(session, "whichsBarGroup", choices = c("all", unique(sBarOptions_v)))
-  }) # update group subset
-  
-  # Pie chart toggle - default is FALSE (no plot output)
-  sBar_plot_logical <- reactiveValues(result = FALSE)
-  
-  # Set logical to true, if "Create Plot" is pressed.
-  observeEvent(input$doPlotsBar, {
-    sBar_plot_logical$result <- TRUE
-  })
-  
-  # Reset to false if "Clear Plot" is pressed
-  observeEvent(input$stopPlotsBar, {
-    sBar_plot_logical$result <- FALSE
-  })
-  
-  # Pie chart output based on plot_logical status
-  output$stackedBarPlot <- renderPlot({
-    if (sBar_plot_logical$result){
-      tcrStackedBar(sBarInData(), 
-                    grouping_column_v = input$sBarGroup, 
-                    which_groups_v = input$whichsBarGroup,
-                    divisions_v = unlist(strsplit(input$sBarDivisions, split = ',')), 
-                    operation_v = input$sBarOperation)
-    } else {
-      return()
-    } # fi
-  }) # renderPlot
+
+
+
+  # ########################
+  # ### Stacked Bar Page ###
+  # ########################
+  # # Obtain file
+  # sBarInFile <- reactive({
+  #   if (is.null(input$sBarFile)){
+  #     #print("input$file is null")
+  #     return(NULL)
+  #   } else {
+  #     return(input$sBarFile)
+  #     #print(input$pieFile)
+  #   } # fi
+  # }) # pieInFile
+  # 
+  # # Obtain data
+  # sBarInData <- reactive({
+  #   if (is.null(sBarInFile())){
+  #     return(NULL)
+  #   } else {
+  #     fread(sBarInFile()$datapath)
+  #   } # fi
+  # }) # pieInData
+  # 
+  # # Update grouping variable options
+  # observe({
+  #   if (is.null(sBarInData())){
+  #     return(NULL)
+  #   } else {
+  #     updateSelectInput(session, "sBarGroup", choices = names(sBarInData()))
+  #   }
+  # }) # update pieGroup
+  # 
+  # # Update pieGroup subset options
+  # observe({
+  #   sBarGroup_v <- input$sBarGroup
+  #   # print(c("pieGroup_v: ", pieGroup_v))
+  #   if (sBarGroup_v == ''){
+  #     sBarOptions_v <- NULL
+  #   } else {
+  #     sBarOptions_v <- sBarInData()[,get(sBarGroup_v)]
+  #   }
+  #   #print(c("sBarOptions_v:", pieOptions_v))
+  #   updateSelectInput(session, "whichsBarGroup", choices = c("all", unique(sBarOptions_v)))
+  # }) # update group subset
+  # 
+  # # Pie chart toggle - default is FALSE (no plot output)
+  # sBar_plot_logical <- reactiveValues(result = FALSE)
+  # 
+  # # Set logical to true, if "Create Plot" is pressed.
+  # observeEvent(input$doPlotsBar, {
+  #   sBar_plot_logical$result <- TRUE
+  # })
+  # 
+  # # Reset to false if "Clear Plot" is pressed
+  # observeEvent(input$stopPlotsBar, {
+  #   sBar_plot_logical$result <- FALSE
+  # })
+  # 
+  # # Pie chart output based on plot_logical status
+  # output$stackedBarPlot <- renderPlot({
+  #   if (sBar_plot_logical$result){
+  #     tcrStackedBar(sBarInData(),
+  #                   grouping_column_v = input$sBarGroup,
+  #                   which_groups_v = input$whichsBarGroup,
+  #                   divisions_v = unlist(strsplit(input$sBarDivisions, split = ',')),
+  #                   operation_v = input$sBarOperation)
+  #   } else {
+  #     return()
+  #   } # fi
+  # }) # renderPlot
   
 }) # shinyServer
 

@@ -46,24 +46,38 @@ ui <- shinyUI(fluidPage(
                             h6("Population and Gate are options for the 'Raw' and 'Summarized' views, while Group and Calculation are for the 'Calculated' view.
                                Samples can be used for all views."),
                             ## Select Populations
-                            selectInput(inputId = "Population",
+                            selectInput(inputId = "fxnlPop",
                                         label = "Population/Group",
                                         choices = "all",
                                         selected = "all",
                                         multiple = T),
                             ## Select Gates
-                            selectInput(inputId = "Gate",
+                            selectInput(inputId = "fxnlGate",
                                         label = "Gate/Calculation",
                                         choices = "all",
                                         selected = "all",
                                         multiple = T),
                             ## Select columns
-                            selectInput(inputId = "Samples",
+                            selectInput(inputId = "fxnlSamples",
                                         label = "Samples",
                                         choices = "all", 
                                         selected = "all",
-                                        multiple = T)
-                            ## Select 
+                                        multiple = T),
+                            ## Output file name
+                            textInput(inputId = "fxnlOutName",
+                                      label = "Output File Name",
+                                      value = "fxnl.xlsx"),
+                            ## Output directory
+                            textInput(inputId = "fxnlOutDir",
+                                      label = "Output Directory",
+                                      value = "~/Downloads"),
+                            ## Download
+                            actionButton(inputId = "saveFxnl", label = "Download Current Data View"),
+                            ## Update user
+                            textOutput(outputId = "fxnlUpdate")
+                            ## Output Download
+                            # downloadLink(outputId = "fxnlOut",
+                            #              label = "Download Current Data View")
                           ), # sidebarPanel
                           
                           mainPanel(DT::dataTableOutput("fxnl")) # mainPanel
@@ -74,16 +88,17 @@ ui <- shinyUI(fluidPage(
                ##################
                ### PIE CHARTS ###~~~~~~~~~~~~~~~~
                ##################
-               
+
                tabPanel("Pie Charts",
 
                         sidebarLayout(
                           sidebarPanel(
                             h3("Pie Chart for Different Immune Cell Distributions"),
+                            h6("You must upload data in the 'View Data' tab first."),
                             br(),
                             h4("Can select:"),
-                            tags$ol(tags$li("A single sample and a single group"), 
-                                    tags$li("Multiple samples and a single group"), 
+                            tags$ol(tags$li("A single sample and a single group"),
+                                    tags$li("Multiple samples and a single group"),
                                     tags$li("a single sample and multiple groups.")),
                             br(),
                             selectInput(inputId = "pieGrp",
@@ -109,8 +124,18 @@ ui <- shinyUI(fluidPage(
                           ), #sidebarPanel
                           mainPanel(plotOutput("fxnlPie", width = 1000, height = 1000))
                           #mainPanel(DT::dataTableOutput("calc"))
-                        )) # sidebarLayout, tabPanel
+                        ))#, # sidebarLayout, tabPanel
 
+             #   tabPanel("Horizontal Bar Chart",
+             # 
+             #            sidebarLayout(
+             #              sidebarPanel(
+             # 
+             #              )
+             #            )
+             # 
+             # 
+             # ) # tabPanel
              ) # tabsetPanel
     ),
              
@@ -119,17 +144,17 @@ ui <- shinyUI(fluidPage(
     ##############################
     
     tabPanel("Myeloid/Lymphoid Panel",
-             
+
              tabsetPanel(
-               
+
                #################
                ### VIEW DATA ###~~~~~~~~~~~~~~~~~
                #################
-               
+
                tabPanel("View Data",
-                        
+
                         sidebarLayout(
-                          
+
                           sidebarPanel(
                             ## Load file
                             fileInput(inputId = "mlFile", label = h4("Select Input Data File"), placeholder = "/path/to/myeloid_lymphoid.xlsx"),
@@ -149,38 +174,38 @@ ui <- shinyUI(fluidPage(
                             ## Select columns
                             selectInput(inputId = "Samples",
                                         label = "Samples",
-                                        choices = "all", 
+                                        choices = "all",
                                         selected = "all",
                                         multiple = T)
-                            ## Select 
+                            ## Select
                             ), # sidebarPanel
-                          
+
                           mainPanel(DT::dataTableOutput("ml")) # mainPanel
                           #mainPanel(plotOutput("tester", width = 1000, height = 1000))
-                          
+
                         )), # sidebarLayout, tabPanel
-               
+
                ##################
                ### PIE CHARTS ###~~~~~~~~~~~~~~~~
                ##################
-               
+
                tabPanel("Stacked Bar Chart",
-                        
+
                         sidebarLayout(
                           sidebarPanel(
-                            h3("Pie Chart for Different Immune Cell Distributions"),
+                            h3("Stacked Bar Chart For Immune Cell Composition"),
                             br(),
                             h4("Can select:"),
-                            tags$ol(tags$li("A single sample and a single group"), 
-                                    tags$li("Multiple samples and a single group"), 
+                            tags$ol(tags$li("A single sample and a single group"),
+                                    tags$li("Multiple samples and a single group"),
                                     tags$li("a single sample and multiple groups.")),
                             br(),
-                            selectInput(inputId = "pieGrp",
+                            selectInput(inputId = "FOOpieGrp",
                                         label = h4("Select Which Group(s) to Plot"),
                                         choices = "all",
                                         selected = "all",
                                         multiple = T),
-                            selectInput(inputId = "pieSample",
+                            selectInput(inputId = "FOOpieSample",
                                         label = h4("Select Which Sample(s) to Plot"),
                                         choices = "all",
                                         selected = "all",
@@ -189,17 +214,17 @@ ui <- shinyUI(fluidPage(
                             tags$ol(tags$li("Character vector of calculations that will be left blank"),
                                     tags$li("Numeric vector of indices of calculations that will be left blank"),
                                     tags$li("NA - will print all percentages greater than 5%")),
-                            textInput(inputId = "piePct",
+                            textInput(inputId = "FOOpiePct",
                                       label = NULL,
                                       value = NA),
                             br(),
-                            actionButton(inputId = "doPlotPie", label = "Plot"),
-                            actionButton(inputId = "stopPlotPie", label = "Clear")
+                            actionButton(inputId = "FOOdoPlotPie", label = "Plot"),
+                            actionButton(inputId = "FOOstopPlotPie", label = "Clear")
                           ), #sidebarPanel
-                          mainPanel(plotOutput("fxnlPie", width = 1000, height = 1000))
+                          mainPanel(plotOutput("FOOfxnlPie", width = 1000, height = 1000))
                           #mainPanel(DT::dataTableOutput("calc"))
                         )) # sidebarLayout, tabPanel
-             ) # tabsetPanel    
+             ) # tabsetPanel
     ) # tabPanel
   ) # tabset panel
 )) # fluidPage

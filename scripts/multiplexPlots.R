@@ -52,7 +52,7 @@ plotPie <- function(data_dt, groupCol_v = "Group", calcCol_v = "Calc", group_v, 
   #' @param groupCol_v column name of the immune group column of data_dt. Default is "Group".
   #' @param calcCol_v column name of the immune group subset column of data_dt. Default is "Calc".
   #' @param group_v specific immune group or groups to plot in pie chart. Must be a value listed in groupCol_v of data_dt. If this is multiple, sample_v must be singular.
-  #' @param sample_v character vector - sample or samples to plot. Must be a valid column name of data_dt. If this is multiple, group_v must be singular.
+  #' @param sample_v character vector - sample or samples to plot. Must be a valid column name of data_dt. If this is multiple, group_v must be singular. Can also be "all" to plot all samples.
   #' @param color_dt data.table with rows = immune cell groups and columns of various metadata as well as color specifications. 
   #' Required columns: 'Group' - immune cell group; 'Calc' - group subset; 'Legend' - name of subset for legend; 'SubLegend' - possible extra legend name
   #' 'Hex' - hex code color.
@@ -75,6 +75,11 @@ plotPie <- function(data_dt, groupCol_v = "Group", calcCol_v = "Calc", group_v, 
                 paste0(merge_dt$Legend[x], "\n(", merge_dt$SubLegend[x], ")"))
   })
   merge_dt$Legend <- newLegend_v
+  
+  ## Handle samples
+  if (sample_v == "all"){
+    sample_v <- setdiff(colnames(data_dt), c(groupCol_v, calcCol_v))
+  }
   
   ## Make title
   title_v <- paste0("Patient: ", sample_v)
@@ -189,6 +194,11 @@ horizBar <- function(data_dt, groupCol_v = "Group", calcCol_v = "Calc", group_v,
   #' @param colors_v vector of colors for the bars. If only one bar per category, will use grey, otherwise will use the colors specified.
   #' @value returns a "gg" and "ggplot" object that can be printed to console or saved to a file.
   #' @export
+   
+  ## Dependencies
+  library(data.table)
+  library(grid)
+  library(ggplot2)
   
   ## Subset data
   sub_dt <- data_dt[get(groupCol_v) %in% group_v,]
