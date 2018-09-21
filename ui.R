@@ -19,7 +19,7 @@ ui <- shinyUI(fluidPage(
   tabsetPanel(
     
     ########################
-    ### FUNCTIONAL PANEL ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ### FUNCTIONAL PANEL ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ########################
     
     tabPanel("Functional Panel",
@@ -27,7 +27,7 @@ ui <- shinyUI(fluidPage(
              tabsetPanel(
                
                #################
-               ### VIEW DATA ###~~~~~~~~~~~~~~~~~
+               ### VIEW DATA ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                #################
                
                tabPanel("View Data",
@@ -75,18 +75,16 @@ ui <- shinyUI(fluidPage(
                             actionButton(inputId = "saveFxnl", label = "Download Current Data View"),
                             ## Update user
                             textOutput(outputId = "fxnlUpdate")
-                            ## Output Download
-                            # downloadLink(outputId = "fxnlOut",
-                            #              label = "Download Current Data View")
-                          ), # sidebarPanel
+                          ), # sidebarPanel - FunctionalPanel - ViewData
                           
-                          mainPanel(DT::dataTableOutput("fxnl")) # mainPanel
-                          #mainPanel(plotOutput("tester", width = 1000, height = 1000))
-                          
-                        )), # sidebarLayout, tabPanel
+                          mainPanel(DT::dataTableOutput("fxnl")
+                                    
+                          ) # mainPanel - FunctionalPanel - ViewData
+                        ) # sidebarLayout - FunctionalPanel - ViewData
+                ), # tabPanel - FunctionalPanel - ViewData
                
                ##################
-               ### PIE CHARTS ###~~~~~~~~~~~~~~~~
+               ### PIE CHARTS ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                ##################
 
                tabPanel("Pie Charts",
@@ -119,12 +117,29 @@ ui <- shinyUI(fluidPage(
                                       label = NULL,
                                       value = NA),
                             br(),
+                            h4("Plot"),
                             actionButton(inputId = "doPlotPie", label = "Plot"),
-                            actionButton(inputId = "stopPlotPie", label = "Clear")
-                          ), #sidebarPanel
-                          mainPanel(plotOutput("fxnlPie", width = 1000, height = 1000))
-                          #mainPanel(DT::dataTableOutput("calc"))
-                        ))#, # sidebarLayout, tabPanel
+                            actionButton(inputId = "stopPlotPie", label = "Clear"),
+                            br(),
+                            h4("Save"),
+                            ## Output file name
+                            textInput(inputId = "fxnlPieOutName",
+                                      label = "Output File Name",
+                                      value = "fxnlPie.pdf"),
+                            ## Output directory
+                            textInput(inputId = "fxnlPieOutDir",
+                                      label = "Output Directory",
+                                      value = "~/Downloads"),
+                            ## Download
+                            actionButton(inputId = "saveFxnlPie", label = "Download Current Data View"),
+                            ## Update user
+                            textOutput(outputId = "fxnlPieUpdate")
+                          ), # sidebarPanel - FunctionalPanel - PieCharts
+                          
+                          mainPanel(plotOutput("fxnlPie", width = 1000, height = 1000)
+                          ) # mainPanel - FunctionalPanel - PieCharts
+                        ) # sidebarLayout - FunctionalPanel - PieCharts
+                )#, # tabPanel - FunctionalPanel - PieCharts
 
              #   tabPanel("Horizontal Bar Chart",
              # 
@@ -140,7 +155,7 @@ ui <- shinyUI(fluidPage(
     ),
              
     ##############################
-    ### MYELOID/LYMPHOID PANEL ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ### MYELOID/LYMPHOID PANEL ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ##############################
     
     tabPanel("Myeloid/Lymphoid Panel",
@@ -148,7 +163,7 @@ ui <- shinyUI(fluidPage(
              tabsetPanel(
 
                #################
-               ### VIEW DATA ###~~~~~~~~~~~~~~~~~
+               ### VIEW DATA ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                #################
 
                tabPanel("View Data",
@@ -185,9 +200,9 @@ ui <- shinyUI(fluidPage(
 
                         )), # sidebarLayout, tabPanel
 
-               ##################
-               ### PIE CHARTS ###~~~~~~~~~~~~~~~~
-               ##################
+               ##########################
+               ### STACKED BAR CHARTS ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+               ##########################
 
                tabPanel("Stacked Bar Chart",
 

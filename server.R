@@ -205,8 +205,7 @@ server <- shinyServer(function(input, output, session) {
   })
 
   ## Reactive value
-  message_v <- reactiveVal()
-  message_v("blank")
+  message_v <- reactiveVal(); message_v("blank")
   
   ## Write table
   observeEvent(input$saveFxnl, {
@@ -219,19 +218,13 @@ server <- shinyServer(function(input, output, session) {
   })
   
   ## Update user
-  output$fxnlUpdate <- renderText({
-    if (message_v() == "blank") {
-      return(NULL)
-    } else {
-      message_v()
-    }
-  })
+  output$fxnlUpdate <- renderText({ if (message_v() == "blank") { return(NULL) } else { message_v() } })
   
-  ########################
-  ### VENN DIAGRAM TAB ###~~~~~~~~~~~~~~~~~~~~~~~
-  ########################
+  #####################
+  ### PIE CHART TAB ###~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #####################
 
-  # Update grouping variable options
+  ## Update grouping variable options
   observe({
     if (is.null(fxnlCalcData())){
       return(NULL)
@@ -246,24 +239,91 @@ server <- shinyServer(function(input, output, session) {
   piePlot_logical <- reactiveVal(value = FALSE)
   observeEvent(input$doPlotPie, {piePlot_logical(TRUE)})
   observeEvent(input$stopPlotPie, {piePlot_logical(FALSE)})
+  
+  ## Update output filename based on select arguments
+  observe({
+    if (is.null(fxnlCalcData())) {
+      return(NULL)
+    } else {
+      
+      baseName_v <- "fxnlPie"
+      
+      ## Add group, if specified
+      if (!is.null(input$pieGrp)){ 
+        if (input$pieGrp[1] != "all") {
+          temp <- paste(input$pieGrp, collapse = "-")
+          baseName_v <- paste0(baseName_v, "_-_", temp)
+        }
+      } # fi fxnlPop
+      
+      ## Add gate/calc, if specified
+      if (!is.null(input$pieSample)){
+        if (input$pieSample[1] != "all"){
+          temp <- paste(input$pieSample, collapse = "-")
+          baseName_v <- paste0(baseName_v, "_-_", temp)
+        } 
+      } # fi fxnlGate
 
-  ## Plot
-  output$fxnlPie <- renderPlot({
+      ## Remove spaces
+      baseName_v <- gsub(" ", "_", baseName_v)
+      ## Add extension
+      baseName_v <- paste0(baseName_v, ".pdf")
+      ## Update
+      cat(sprintf("fxnlPieOutName should be set as %s\n", baseName_v))
+      updateTextInput(session, "fxnlPieOutName", value = baseName_v)
+    }
+  }) # update filename
+
+  ## Get plot
+  outputFxnlPie <- reactive({
     if (piePlot_logical()) {
-      print(fxnlCalcData()[1:5,1:5])
-      print(input$pieGrp)
-      print(input$pieSample)
-      print(functionalColors_dt[1:5,1:5])
-      print(input$piePct)
       pies <- plotPie(fxnlCalcData(),
                       group_v = input$pieGrp,
                       sample_v = input$pieSample,
                       color_dt = functionalColors_dt,
                       pct_v = input$piePct)
-      grid.arrange(grobs = pies)
+      return(pies)
     } else {
-      return()
-    }})
+      return(NULL)
+    }
+  })
+  
+  ## Plot
+  output$fxnlPie <- renderPlot({
+    if (piePlot_logical()) {
+      grid.arrange(grobs = outputFxnlPie())
+    }
+  })
+  
+  ## Reactive value
+  pieMessage_v <- reactiveVal(); pieMessage_v("blank")
+  
+  ## Write pie
+  observeEvent(input$saveFxnlPie, {
+    ## Make name
+    out_v <- file.path(input$fxnlPieOutDir, input$fxnlPieOutName)
+    ## Make message
+    pieMessage_v(paste0("Saved current view to: ", out_v))
+    ## Plot
+    pdf(file = out_v)
+    grid.arrange(grobs = outputFxnlPie())
+    dev.off()
+  })
+  
+  ## Update user
+  output$fxnlPieUpdate <- renderText({ if (pieMessage_v() == "blank") { return(NULL) } else { pieMessage_v() } })
+  
+  # output$fxnlPie <- renderPlot({
+  #   if (piePlot_logical()) {
+  #     pies <- plotPie(fxnlCalcData(),
+  #                     group_v = input$pieGrp,
+  #                     sample_v = input$pieSample,
+  #                     color_dt = functionalColors_dt,
+  #                     pct_v = input$piePct)
+  #     grid.arrange(grobs = pies)
+  #   } else {
+  #     return()
+  #   }})
 
   output$tester <- renderPlot(plot(1:10))
 
