@@ -17,20 +17,20 @@
 ### READ RAW ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ################
 
-readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population", gateCol_v = "Gate") {
+readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population", gateCol_v = "Gate", infoCol_v = NA) {
   #' Read in raw data from excel file
   #' @description Read in standard excel file containing ROI values for multiple slides
   #' @param input_xlsx character vector - path to input file
   #' @param sheetName_v character vector - name of sheet containing data (default is 'raw data')
   #' @param popCol_v character vector - name of first column that defines the population of cells (e.g. 'CD45+ global population'). Default is 'Population'
   #' @param gateCol_v character vector - name of the second column that contains subsets of the groups based on flow gating (e.g. 'CD45+' or 'CD3+ ICOS+'). Default is 'Gate'
+  #' @param infoCol_v only used for ML panel
   #' @value data.table containing same information as excel sheet
   #' @export
   
   ## Dependencies
   require(data.table)
   require(readxl)
-  
   
   ##
   ## GET RAW DATA ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -39,9 +39,16 @@ readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population
   ## Read
   input_dt <- as.data.table(read_excel(path = input_xlsx, sheet = sheetName_v))
   
+  ## Handle info col
+  if (is.na(infoCol_v)){
+    otherCols_v <- c(popCol_v, gateCol_v)
+  } else {
+    otherCols_v <- c(popCol_v, gateCol_v, infoCol_v)
+  } # fi
+  
   ## Fix column classes
-  dataCols_v <- colnames(input_dt)[!(colnames(input_dt) %in% c(popCol_v, gateCol_v))]
-  for (col_v in c(popCol_v, gateCol_v)) set(input_dt, j = col_v, value = as.character(input_dt[[col_v]]))
+  dataCols_v <- colnames(input_dt)[!(colnames(input_dt) %in% otherCols_v)]
+  for (col_v in otherCols_v) set(input_dt, j = col_v, value = as.character(input_dt[[col_v]]))
   for (col_v in dataCols_v) set(input_dt, j = col_v, value = as.numeric(as.character(input_dt[[col_v]])))
   
   ## Remove spaces from gate names
@@ -52,14 +59,15 @@ readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population
   ##
   
   ## Make beginning of data.table
-  summary_dt <- input_dt[,mget(c(popCol_v, gateCol_v))]
+  summary_dt <- input_dt[,mget(otherCols_v)]
   
   ## Get slides (and check)
   ## So far, have seen:
     ## S1_ROI1; S1_ROI2; S2_ROI1; etc.
     ## X120.ROI.1; X121.ROI.1; X121.ROI.2; X.125.ROI.3; X.130.ROI.3.
     ## 120 ROI 1; 128 ROI6; 138 ROI 3
-  slides_v <- unique(gsub("_ROI[0-9]*$|\\.ROI.*$|[ ]*|ROI[ ]*[0-9]*", "", dataCols_v))
+    ## syn80_1; syn80_2; syn81_1
+  slides_v <- unique(gsub("_ROI[0-9]*$|\\.ROI.*$|[ ]*|ROI[ ]*[0-9]*|syn|_[0-9]*", "", dataCols_v))
   possible_v <- c(paste0("S", 1:1000), paste0("X", 1:1000), 1:1000)
   if (length(which(!(slides_v %in% possible_v)))) {
     stop(sprintf("Not all slide names are 'S[0-9]'. Please check the column names in %s sheet of %s excel file.\n",
@@ -72,6 +80,7 @@ readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population
   sums_mat <- sapply(slides_v, function(x) {
     grep_v <- paste(paste0(x, "\\."), paste0(x, "_"), paste0(x, " "), sep = "|") # Have to have this b/c grepping for S12 would return all of S120,S121, etc.
     cols_v <- grep(grep_v, dataCols_v, value = T)
+    if (length(cols_v) == 0) cols_v <- grep(x, dataCols_v, value = T)
     sums_v <- rowSums(input_dt[,mget(cols_v)])
     return(sums_v)
   })
@@ -89,43 +98,45 @@ readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population
   ## Get all unique individual
   uniqInd_v <- unique(input_dt[[gateCol_v]])
   
-  ## Check individuals for bad names and remove them
-  badStart_v <- grep("^CD|Total", uniqInd_v, invert = T)
-  if (length(badStart_v) > 0) {
-    whichBad_v <- uniqInd_v[badStart_v]
-    uniqInd_v <- uniqInd_v[-badStart_v]
-    input_dt <- input_dt[-badStart_v,]
-    summary_dt <- summary_dt[-badStart_v,]
-    cat(sprintf("Removed %d rows with 'bad' names.\n\tIndexes: %s\n\t%s names: %s\n",
-                length(badStart_v), paste(badStart_v, collapse = "; "), gateCol_v, paste(whichBad_v, collapse = "; ")))
+  ## Check individuals for bad names and remove them (only do this for fnctional panel)
+  if (popCol_v %in% c("population", "Population")){
+    badStart_v <- grep("^CD|Total", uniqInd_v, invert = T)
+    if (length(badStart_v) > 0) {
+      whichBad_v <- uniqInd_v[badStart_v]
+      uniqInd_v <- uniqInd_v[-badStart_v]
+      input_dt <- input_dt[-badStart_v,]
+      summary_dt <- summary_dt[-badStart_v,]
+      cat(sprintf("Removed %d rows with 'bad' names.\n\tIndexes: %s\n\t%s names: %s\n",
+                  length(badStart_v), paste(badStart_v, collapse = "; "), gateCol_v, paste(whichBad_v, collapse = "; ")))
+    } # fi
+    
+    ## Check individuals for positive words
+    hasPos_v <- grep("pos", uniqInd_v)
+    
+    ## Remove them
+    if (length(hasPos_v) > 0) {
+      whichPos_v <- uniqInd_v[hasPos_v]
+      uniqInd_v[hasPos_v] <- gsub("pos", "", uniqInd_v[hasPos_v])
+      input_dt[hasPos_v, eval(gateCol_v) := uniqInd_v[hasPos_v]]
+      summary_dt[hasPos_v, eval(gateCol_v) := uniqInd_v[hasPos_v]]
+      cat(sprintf("Removed %d rows with 'pos' in the name. Please check and make sure there is still a '+'.\n\tIndexes: %s\n\t%s names: %s\n",
+                  length(hasPos_v), as.character(paste(hasPos_v, collapse = "; ")),
+                  gateCol_v, as.character(paste(whichPos_v, collapse = "; "))))
+    }
+    
+    ## Check individuals for negative words
+    hasNeg_v <- grep("neg", uniqInd_v)
+    
+    if (length(hasNeg_v) > 0) {
+      whichNeg_v <- uniqInd_v[hasNeg_v]
+      uniqInd_v[hasNeg_v] <- gsub("neg", "", uniqInd_v[hasNeg_v])
+      input_dt[hasNeg_v, eval(gateCol_v) := uniqInd_v[hasNeg_v]]
+      summary_dt[hasNeg_v, eval(gateCol_v) := uniqInd_v[hasNeg_v]]
+      cat(sprintf("Removed %d rows with 'neg' in the name. Please check and make sure there is still a '-'.\n\tIndexes: %s\n\t%s names: %s\n",
+                  length(hasNeg_v), as.character(paste(hasNeg_v, collapse = "; ")),
+                  gateCol_v, as.character(paste(whichNeg_v, collapse = "; "))))
+    } # fi
   } # fi
-  
-  ## Check individuals for positive words
-  hasPos_v <- grep("pos", uniqInd_v)
-  
-  ## Remove them
-  if (length(hasPos_v) > 0) {
-    whichPos_v <- uniqInd_v[hasPos_v]
-    uniqInd_v[hasPos_v] <- gsub("pos", "", uniqInd_v[hasPos_v])
-    input_dt[hasPos_v, eval(gateCol_v) := uniqInd_v[hasPos_v]]
-    summary_dt[hasPos_v, eval(gateCol_v) := uniqInd_v[hasPos_v]]
-    cat(sprintf("Removed %d rows with 'pos' in the name. Please check and make sure there is still a '+'.\n\tIndexes: %s\n\t%s names: %s\n",
-        length(hasPos_v), as.character(paste(hasPos_v, collapse = "; ")), 
-        gateCol_v, as.character(paste(whichPos_v, collapse = "; "))))
-  }
-  
-  ## Check individuals for negative words
-  hasNeg_v <- grep("neg", uniqInd_v)
-  
-  if (length(hasNeg_v) > 0) {
-    whichNeg_v <- uniqInd_v[hasNeg_v]
-    uniqInd_v[hasNeg_v] <- gsub("neg", "", uniqInd_v[hasNeg_v])
-    input_dt[hasNeg_v, eval(gateCol_v) := uniqInd_v[hasNeg_v]]
-    summary_dt[hasNeg_v, eval(gateCol_v) := uniqInd_v[hasNeg_v]]
-    cat(sprintf("Removed %d rows with 'neg' in the name. Please check and make sure there is still a '-'.\n\tIndexes: %s\n\t%s names: %s\n",
-                length(hasNeg_v), as.character(paste(hasNeg_v, collapse = "; ")), 
-                gateCol_v, as.character(paste(whichNeg_v, collapse = "; "))))
-  }
   
   ##
   ## OUTPUT
@@ -384,55 +395,106 @@ checkSum <- function(data_dt, slides_v, name_v = NA) {
 ### READ ML ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ###############
 
-readML <- function(input_xlsx, sheetName_v = "raw data", panelCol_v = "Panel", gateCol_v = "Gate", infoCol_v = "Info") {
-  #' Read Myeloid-Lymphoid Panel data
-  #' @description Read the myeloid-lymphoid panel excel data. Also calculate sum ROI and normalize, if needed.
-  #' @param input_xlsx character vector - path to input file
-  #' @param sheetName_v character vector - name of sheet containing data (default is 'raw data')
+### For testing
+# input_xlsx <- "~/projs/Coussens/multiplex/data/finalfinal_ML_goodFormat_badCalculations.xlsx"
+# sheetName_v <- "Cohort"
+# panelCol_v <- "Panel"
+# gateCol_v <- "Gate"
+# infoCol_v <- "Info"
+# slides_v <- NULL
+# rawData_ls <- readRaw(input_xlsx = input_xlsx, sheetName_v = "Cohort", popCol_v = "Panel", gateCol_v = "Gate", infoCol_v = "Info")
+# sum_dt <- rawData_ls$sum
+
+mlCalculations <- function(sum_dt, slides_v = NULL, panelCol_v = "Panel", gateCol_v = "Gate", infoCol_v = "Info") {
+  #' Perform different calcualtions on Myeloid/Lymphoid panel summed ROIs
+  #' @description Use summed region of interest values for differing populations to calculate commond percentages for plots.
+  #' @param sum_dt data.table. Rows = panel gates, columns = slides. Should be output of readRaw for a myeloid/lymphoid panel
+  #' @param calcs_v different calculations to run.
+  #' (1) ''
+  #' (2) ''
+  #' @param slides_v character vector of slides to run calculations on. Must be value column names of sum_dt. If not specified, will use all slides.
   #' @param panelCol_v character vector - name of 1st column that determines lymphoid or myeloid panel
   #' @param gateCol_v character vector - name of 2nd column that defines the gate used
   #' @param infoCol_v character vector - name of 3rd column that has extra info about some gates
-  #' @value data.table that's the same as the input excel. Rows = gates, columns = samples
+  #' @value data.table
   #' @export
   
-  ## Dependencies
-  require(data.table)
-  require(xlsx)
+  ## Get slides
+  if (is.null(slides_v)) slides_v <- grep("[SX][0-9]*$|[0-9]+$|^syn|_[0-9]*", colnames(sum_dt), value = T)
   
-  ## Read data
-  data_dt <- as.data.table(read_excel(path = input_xlsx, sheet = sheetName_v))
+  ## Output matrix
+  out_lsv <- list()
   
-  ## Fix column classes
-  dataCols_v <- colnames(data_dt)[!(colnames(data_dt) %in% c(panelCol_v, gateCol_v, infoCol_v))]
-  for (col_v in c(panelCol_v, gateCol_v, infoCol_v)) set(data_dt, j = col_v, value = as.character(data_dt[[col_v]]))
-  for (col_v in dataCols_v) set(data_dt, j = col_v, value = as.numeric(as.character(data_dt[[col_v]])))
+  ##
+  ## NORMALIZATION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ##
   
-  ## Remove spaces from gate names
-  data_dt[[gateCol_v]] <- gsub("\\s", "", data_dt[[gateCol_v]])
+  for (i in 1:length(slides_v)){
+    ## Get slide
+    currSlide_v <- slides_v[i]
+    
+    ## Get numerator and denominator
+    currNum_v <- sum_dt[get(infoCol_v) == "M_on_L", get(currSlide_v)]
+    currDen_v <- sum_dt[get(infoCol_v) == "L_on_M", get(currSlide_v)]
+    
+    ## Get myeloid and lymphoid
+    currMyeloid_v <- sum_dt[get(panelCol_v) %in% c("MYELOID", "Myeloid", "myeloid"), get(currSlide_v)]
+    currLymphoid_v <- sum_dt[get(panelCol_v) %in% c("LYMPHOID", "Lymphoid", "lymphoid"), get(currSlide_v)]
+    
+    ## Normalize myeloid
+    currMyeloid_v <- currMyeloid_v * (currNum_v / currDen_v)
+    
+    ## Add back
+    sum_dt[[currSlide_v]] <- c(currMyeloid_v, currLymphoid_v)
+  }
   
-  ## Get other columns
-  sumCol_v <- grep("^SUM|^sum|^Sum", colnames(data_dt), value = T)
-  normCol_v <- grep("^norm|^Norm|^NORM", colnames(data_dt), value = T)
-  dataCols_v <- setdiff(dataCols_v, c(sumCol_v, normCol_v))
+  ##
+  ## RATIOS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ##
   
-  ## Add back sum, if needed
-  if (length(is.na(data_dt[[sumCol_v]])) == nrow(data_dt)) { data_dt[[sumCol_v]] <- rowSums(data_dt[,mget(dataCols_v)]) }
+  ratio_dt <- data.table("Cell" = c(rep("T-Cell", 6), rep("Lymphoid", 2), "Dendritic Cell", rep("Macrophage", 4), rep("Dendritic Cell", 2), rep("Granulocyte", 2)),
+                         "Subtype" = c("Th0", "Treg", "Th17", "Th2", "Th1", "CD8 T Cells", "NK Cells", "B Cells", "myeloid other",
+                                       "CD163- myelomono", "CD163+ myelomono", "CD163- TAM", "CD163+ TAM", "immature DCs", "mature DCs", "neutrophil", "mast cell"))
   
-  ## Normalize
-  if (length(is.na(data_dt[[normCol_v]])) == nrow(data_dt)) {
-    ## Myeloid normalize
-    myeloid_v <- data_dt[get(panelCol_v) %in% c("MYELOID", "Myeloid" , "myeloid"), get(sumCol_v)] * 
-      (data_dt[get(gateCol_v) == "CD45+CD3/CD20/NKp46+", get(sumCol_v)] /
-         data_dt[get(gateCol_v) == "CD45+CD3-NKp46-CD20-", get(sumCol_v)])
-    ## Lymphoid is the same
-    lymphoid_v <- data_dt[get(panelCol_v) %in% c("LYMPHOID", "Lymphoid", "lymphoid"), get(sumCol_v)]
-    ## Add
-    data_dt[[normCol_v]] <- c(myeloid_v, lymphoid_v)
-  } # fi
+  cd68pos_v <- c("CD163- myelomono", "CD163+ myelomono", "CD163- TAM", "CD163+ TAM")
   
-  ## Add % CD45 column as well
-  data_dt$pctCD45 <- data_dt[[sumCol_v]] / data_dt[get(panelCol_v) %in% c("LYMPHOID", "Lymphoid", "lymphoid") &
-                                                get(gateCol_v) == "CD45+", get(normCol_v)]
-  ## Return
-  return(data_dt)
-} # readML
+  ratio_dt <- merge(ratio_dt, sum_dt[,mget(c(infoCol_v, slides_v))], by.x = "Subtype", by.y = infoCol_v, sort = F, all.x = T)
+  
+  new_mat <- matrix(nrow = 6, ncol = length(slides_v))
+  
+  for (i in 1:length(slides_v)){
+    
+    ## Get slide
+    currSlide_v <- slides_v[i]
+    
+    ## Percent CD45
+    ratio_dt[[currSlide_v]] <- ratio_dt[[currSlide_v]] / sum_dt[get(panelCol_v) %in% c("LYMPHOID", "Lymphoid", "lymphoid") &
+                                                                   get(gateCol_v) == "CD45+", get(currSlide_v)]
+    
+    ## Other ratios
+    new_mat[1, i] <- ratio_dt[Subtype == "Th1", get(currSlide_v)] / ratio_dt[Subtype == "Th2", get(currSlide_v)]
+    new_mat[2, i] <- ratio_dt[Subtype == "NK Cells", get(currSlide_v)] / ratio_dt[Subtype == "Treg", get(currSlide_v)]
+    new_mat[3, i] <- ratio_dt[Subtype == "Th1", get(currSlide_v)] / ratio_dt[Subtype == "Treg", get(currSlide_v)]
+    new_mat[4, i] <- ratio_dt[Subtype == "CD8 T Cells", get(currSlide_v)] / sum(ratio_dt[Subtype %in% cd68pos_v, get(currSlide_v)])
+    new_mat[5, i] <- ratio_dt[Subtype == "CD163- TAM", get(currSlide_v)] / ratio_dt[Subtype == "CD163+ TAM", get(currSlide_v)]
+    new_mat[6, i] <- ratio_dt[Subtype == "mature DCs", get(currSlide_v)] / ratio_dt[Subtype == "immature DCs", get(currSlide_v)]
+    
+  } # for i
+
+  ## Add Subtype and Cell columns
+  ratioNames_v <- c("Th1:Th2", "NK:Treg", "Th1:Treg", "CD8:CD68+", "CD163-:CD163+ TAMs", "Mature:immature DCs")
+  cellNames_v <- rep(NA, 6)
+  new_mat <- cbind(ratioNames_v, cellNames_v, new_mat)
+  colnames(new_mat) <- c("Subtype", "Cell", slides_v)
+  
+  ## Add to ratio data
+  ratio_dt <- rbind(ratio_dt, new_mat)
+  
+  ## Fix classes
+  for (col_v in slides_v) set(ratio_dt, j = col_v, value = as.numeric(ratio_dt[[col_v]]))
+  
+  ## Output
+  out_lsdt <- list("norm" = sum_dt, "ratio" = ratio_dt)
+  return(out_lsdt)
+}
+
