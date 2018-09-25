@@ -30,13 +30,13 @@ bar_theme <- theme_classic() +
 
 stacked_theme <- theme_classic() +
   theme(plot.title = element_text(hjust = 0.5, size = 20),
-        axis.text.x = element_blank(),
+        #axis.text.x = element_blank(),
         axis.ticks.x = element_blank(),
         axis.title = element_text(size = 16),
         axis.text.y = element_text(size = 14),
         axis.line.x = element_blank(),
-        legend.title = element_blank(),
-        plot.margin = unit(c(0,6,0,6), "cm"))
+        legend.title = element_blank())#,
+        # plot.margin = unit(c(0,6,0,6), "cm"))
 
 #################
 ### PIE CHART ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -223,7 +223,7 @@ horizBar <- function(data_dt, groupCol_v = "Group", calcCol_v = "Calc", group_v,
   if (length(unique(melt_dt$variable)) == 1) colors_v <- "grey35"
   
   ## Plot
-  hbFxn(melt_dt, calcCol_v, title_v, colors_v = colors_v)
+  plotOut <- grid.grabExpr(hbFxn(melt_dt, calcCol_v, title_v, colors_v = colors_v))
   
 }
 
@@ -257,7 +257,7 @@ hbFxn <- function(melt_dt, calcCol_v, title_v, colors_v = c("yellow", "red")) {
 ### STACKED BAR CHART ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #########################
 
-stackedBar <- function(data_dt, panelCol_v = "Panel", gateCol_v = "Gate", infoCol_v = "Info", plotCol_v = "pctCD45", color_dt,
+stackedBar <- function(data_dt, panelCol_v = "Cell", gateCol_v = "Subtype", color_dt, sample_v,
                        xlab_v = "CD45+ Cells", ylab_v = "% of CD45+ cells", title_v = "Immune Cell Composition") {
   #' Multiplex Stacked Bar Chart
   #' @description Stacked Bar chart displaying the distribution of subtypes from the lymphoid panel
@@ -278,16 +278,32 @@ stackedBar <- function(data_dt, panelCol_v = "Panel", gateCol_v = "Gate", infoCo
   #' @value returns a "gg" and "ggplot" object that can be printed to console or saved to a file.
   #' @export
   
-  ## Merge data and colors
-  merge_dt <- merge(data_dt, color_dt, by = "Gate", sort = F, all.x = F, all.y = T)
+  ## Subset data for samples
+  data_dt <- data_dt[,mget(c(panelCol_v, gateCol_v, sample_v))]
   
-  ## Add dummy x variable
-  merge_dt$x <- rep("a", nrow(merge_dt))
+  ## Standardize to be out of 100%
+  # for (i in 1:length(sample_v)){
+  #   currSample_v <- sample_v[i]
+  #   sum_v <- sum(data_dt[[currSample_v]])
+  #   pct_v <- data_dt[[currSample_v]] / sum_v * 100
+  #   data_dt[[currSample_v]] <- pct_v
+  # }
+  
+  ## Merge data and colors
+  merge_dt <- merge(data_dt, color_dt, by = "Subtype", sort = F, all.x = F, all.y = T)
+  
+  ## Melt
+  id_v <- setdiff(colnames(merge_dt), sample_v)
+  melt_dt <- melt(merge_dt, id.vars = id_v)
+  
+  ## Factor levels are opposite
+  levels_v <- merge_dt[order(merge_dt$Factor, decreasing = T), Subtype]
+  melt_dt$Subtype <- factor(melt_dt$Subtype, levels = levels_v)
   
   ## Make plot
-  stackedBar_gg <- ggplot(data = merge_dt, aes_string(x = "x", y = plotCol_v, fill = "SubType")) +
-    geom_bar(stat = "identity", width = 0.5) +
-    scale_fill_manual(limits = merge_dt$SubType, values = merge_dt$Hex) +
+  stackedBar_gg <- ggplot(data = melt_dt, aes_string(x = "variable", y = "value", fill = gateCol_v)) +
+    geom_bar(position = "fill", stat = "identity", width = 0.5) +
+    scale_fill_manual(limits = as.character(melt_dt[[gateCol_v]]), values = melt_dt$Hex) +
     labs(y = "% of CD45+ cells", x = "CD45+ Cells") + ggtitle("Immune Cell Composition") +
     stacked_theme
     
