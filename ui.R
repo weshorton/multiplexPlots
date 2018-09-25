@@ -139,19 +139,52 @@ ui <- shinyUI(fluidPage(
                           mainPanel(plotOutput("fxnlPie", width = 1000, height = 1000)
                           ) # mainPanel - FunctionalPanel - PieCharts
                         ) # sidebarLayout - FunctionalPanel - PieCharts
-                )#, # tabPanel - FunctionalPanel - PieCharts
+                ), # tabPanel - FunctionalPanel - PieCharts
 
-             #   tabPanel("Horizontal Bar Chart",
-             # 
-             #            sidebarLayout(
-             #              sidebarPanel(
-             # 
-             #              )
-             #            )
-             # 
-             # 
-             # ) # tabPanel
-             ) # tabsetPanel
+               tabPanel("Horizontal Bar Chart",
+
+                        sidebarLayout(
+                          sidebarPanel(
+                            h3("Stacked Bar for Pct CD8 - Check this"),
+                            h6("You must upload data in the 'View Data' tab first."),
+                            br(),
+                            selectInput(inputId = "hBarGrp",
+                                        label = h4("Select Which Group(s) to Plot"),
+                                        choices = "all",
+                                        selected = "all",
+                                        multiple = T),
+                            selectInput(inputId = "hBarSample",
+                                        label = h4("Select Which Sample(s) to Plot"),
+                                        choices = "all",
+                                        selected = "all",
+                                        multiple = T),
+                            br(),
+                            h4("Plot"),
+                            actionButton(inputId = "doPlotHBar", label = "Plot"),
+                            actionButton(inputId = "stopPlotHBar", label = "Clear"),
+                            br(),
+                            h4("Save"),
+                            ## Output file name
+                            textInput(inputId = "fxnlHBarOutName",
+                                      label = "Output File Name",
+                                      value = "fxnlHBar.pdf"),
+                            ## Output directory
+                            textInput(inputId = "fxnlHBarOutDir",
+                                      label = "Output Directory",
+                                      value = "~/Downloads"),
+                            ## Download
+                            actionButton(inputId = "saveFxnlHBar", label = "Download Current Data View"),
+                            ## Update user
+                            textOutput(outputId = "fxnlHBarUpdate")
+                          ), # sidebarPanel - FunctionalPanel - horizontalBar
+                          
+                          mainPanel(plotOutput("fxnlHBar", width = 1000, height = 1000)
+                          ) # mainPanel - FunctionalPanel - horizontalBar
+                        ) # sidebarLayout - FunctionalPanel - horizontalBar
+
+
+             ) # tabPanel - FunctionalPanel - horizontalBar
+             ) # tabsetPanel - FunctionalPanel
     ),
              
     ##############################
@@ -173,25 +206,41 @@ ui <- shinyUI(fluidPage(
                           sidebarPanel(
                             ## Load file
                             fileInput(inputId = "mlFile", label = h4("Select Input Data File"), placeholder = "/path/to/myeloid_lymphoid.xlsx"),
+                            ## Select View
+                            radioButtons("mlDataSelect", label = h4("Select Which Data to View"),
+                                         choices = list("Raw" = "raw", "Summarized" = "sum", "Normalized" = "norm", "Ratio" = "ratio"),
+                                         selected = "raw"),
                             h4("Select Optional Subsets to View"),
                             ## Select Populations
-                            selectInput(inputId = "Panel",
-                                        label = "Panel",
+                            selectInput(inputId = "mlPanel",
+                                        label = "Panel/Cell",
                                         choices = "all",
                                         selected = "all",
                                         multiple = T),
                             ## Select Gates
-                            selectInput(inputId = "Gate",
-                                        label = "Gate",
+                            selectInput(inputId = "mlGate",
+                                        label = "Gate/Subtype",
                                         choices = "all",
                                         selected = "all",
                                         multiple = T),
                             ## Select columns
-                            selectInput(inputId = "Samples",
+                            selectInput(inputId = "mlSamples",
                                         label = "Samples",
                                         choices = "all",
                                         selected = "all",
-                                        multiple = T)
+                                        multiple = T),
+                            ## Output file name
+                            textInput(inputId = "mlOutName",
+                                      label = "Output File Name",
+                                      value = "ml.xlsx"),
+                            ## Output directory
+                            textInput(inputId = "mlOutDir",
+                                      label = "Output Directory",
+                                      value = "~/Downloads"),
+                            ## Download
+                            actionButton(inputId = "saveML", label = "Download Current Data View"),
+                            ## Update user
+                            textOutput(outputId = "mlUpdate")
                             ## Select
                             ), # sidebarPanel
 
@@ -215,28 +264,31 @@ ui <- shinyUI(fluidPage(
                                     tags$li("Multiple samples and a single group"),
                                     tags$li("a single sample and multiple groups.")),
                             br(),
-                            selectInput(inputId = "FOOpieGrp",
-                                        label = h4("Select Which Group(s) to Plot"),
-                                        choices = "all",
-                                        selected = "all",
-                                        multiple = T),
-                            selectInput(inputId = "FOOpieSample",
+                            selectInput(inputId = "mlSbarSample",
                                         label = h4("Select Which Sample(s) to Plot"),
                                         choices = "all",
                                         selected = "all",
                                         multiple = T),
-                            h4("Select How to Display Percentages"),
-                            tags$ol(tags$li("Character vector of calculations that will be left blank"),
-                                    tags$li("Numeric vector of indices of calculations that will be left blank"),
-                                    tags$li("NA - will print all percentages greater than 5%")),
-                            textInput(inputId = "FOOpiePct",
-                                      label = NULL,
-                                      value = NA),
                             br(),
-                            actionButton(inputId = "FOOdoPlotPie", label = "Plot"),
-                            actionButton(inputId = "FOOstopPlotPie", label = "Clear")
+                            h4("Plot"),
+                            actionButton(inputId = "doPlotSbar", label = "Plot"),
+                            actionButton(inputId = "stopPlotSbar", label = "Clear"),
+                            br(),
+                            h4("Save"),
+                            ## Output file name
+                            textInput(inputId = "mlSbarOutName",
+                                      label = "Output File Name",
+                                      value = "mlSbar.pdf"),
+                            ## Output directory
+                            textInput(inputId = "mlSbarOutDir",
+                                      label = "Output Directory",
+                                      value = "~/Downloads"),
+                            ## Download
+                            actionButton(inputId = "saveMLSbar", label = "Download Current Data View"),
+                            ## Update user
+                            textOutput(outputId = "mlSbarUpdate")
                           ), #sidebarPanel
-                          mainPanel(plotOutput("FOOfxnlPie", width = 1000, height = 1000))
+                          mainPanel(plotOutput("mlSbar", width = 1000, height = 1000))
                           #mainPanel(DT::dataTableOutput("calc"))
                         )) # sidebarLayout, tabPanel
              ) # tabsetPanel
