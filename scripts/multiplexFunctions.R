@@ -190,7 +190,7 @@ standardCalcs <- function(sum_dt, calcs_v = c("pctCD45", "majorImmune", "PctCD8.
                      "PD1- EOMES+" = "CD45+CD3+CD8+PD1-EOMES+", "PD1- EOMES-" = "CD45+CD3+CD8+PD1-EOMES-")
   cd8Ki67Rows_v <- c("PD1+ EOMES-" = "CD45+CD3+CD8+PD1+EOMES-Ki67+", "PD1+ EOMES+" = "CD45+CD3+CD8+PD1+EOMES+KI67+",
                      "PD1- EOMES+" = "CD45+CD3+CD8+PD1-EOMES+Ki67+", "PD1- EOMES-" = "CD45+CD3+CD8+PD1-EOMES-Ki67+")
-  cd8GRZBRows_v <- c("PD1+ EOMES+" = "CD45+CD3+CD8+PD1+EOMES-GRZB+", "PD1+ EOMES+" = "CD45+CD3+CD8+PD1+EOMES+GRZB+",
+  cd8GRZBRows_v <- c("PD1+ EOMES-" = "CD45+CD3+CD8+PD1+EOMES-GRZB+", "PD1+ EOMES+" = "CD45+CD3+CD8+PD1+EOMES+GRZB+",
                      "PD1- EOMES+" = "CD45+CD3+CD8+PD1-EOMES+GRZB+", "PD1- EOMES-" = "CD45+CD3+CD8+PD1-EOMES-GRZB+")
   cd4Rows_v <- c("Ki67" = "CD45+CD3+CD8-Ki67+", "GRZB+" = "CD45+CD3+CD8-GRZB+", 
                  "PD-1+" = "CD45+CD3+CD8-PD1+")
