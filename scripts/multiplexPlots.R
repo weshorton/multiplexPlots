@@ -35,8 +35,15 @@ stacked_theme <- theme_classic() +
         axis.title = element_text(size = 16),
         axis.text.y = element_text(size = 14),
         axis.line.x = element_blank(),
-        legend.title = element_blank())#,
-        # plot.margin = unit(c(0,6,0,6), "cm"))
+        legend.title = element_blank())
+
+sunburst_theme <- theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5, size = 20),
+        plot.subtitle = element_text(hjust = 0.5, size = 16),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.line = element_blank(),
+        axis.title = element_blank())
 
 #################
 ### PIE CHART ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -265,8 +272,7 @@ stackedBar <- function(data_dt, panelCol_v = "Cell", gateCol_v = "Subtype", colo
   #' (1) Panel (2) Gate (3) Info (4) NORMALIZED.VALUES (5) SUM.ROIs (6..n) samples
   #' @param panelCol_v character vector - name of 1st column that determines lymphoid or myeloid panel
   #' @param gateCol_v character vector - name of 2nd column that defines the gate used
-  #' @param infoCol_v character vector - name of 3rd column that has extra info about some gates
-  #' @param plotCol_v character vector - name of column to use as the y-axis.
+  #' @param sample_v character vector - sample or samples to plot. Must be a valid column name of data_dt.
   #' @param color_dt data.table with rows = immune cell groups and columns of various metadata as well as color specifications. 
   #' @param xlab_v character vector - label for x axis. Default is 'CD45+ Cells"
   #' @param ylab_v character vector - label for y axis. Default is "% of CD45+ Cells"
@@ -310,3 +316,605 @@ stackedBar <- function(data_dt, panelCol_v = "Cell", gateCol_v = "Subtype", colo
   ## Return
   return(stackedBar_gg)
 } # stackedBar
+
+
+######################
+### SUNBURST CHART ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+######################
+
+mlSunburstChart <- function(data_dt, panelCol_v = "Cell", gateCol_v = "Subtype", color_dt, sample_v,
+                          title_v = "Immune Cell Composition") {
+  #' Multiplex Sunburst Chart
+  #' @description Sunburst chart displaying the hierarchical distribution of different immune types
+  #' @param data_dt data.table with rows = immune cell gate and columns are samples. Columns must be:
+  #' (1) Panel (2) Gate (3) Info (4) NORMALIZED.VALUES (5) SUM.ROIs (6..n) samples  ### THIS IS STILL FROM STACKED BAR - NEED TO CHANGE
+  #' @param panelCol_v character vector - name of 1st column that determines lymphoid or myeloid panel
+  #' @param gateCol_v character vector - name of 2nd column that defines the gate used
+  #' @param color_dt data.table with rows = immune cell groups and columns of various metadata as well as color specifications.
+  #' @param sample_v character vector - sample or samples to plot. Must be a valid column name of data_dt.
+  #' Should be numbers (e.g. 81, 82, 83) or numbers prepended by S (e.g. S81, S82, S83)
+  #' @param title_v character vector - title for plot. Default is "Immune Cell Composition"
+  #' Required columns: 
+  #' 'Subtype' - immune cell subtype (e.g. Th0, B cell, NK, etc.)
+  #' 'Gate' - gating used. Must be equal to the gateCol_v values in data_dt
+  #' 'Hex' - hex code color.
+  #' @value returns a "gg" and "ggplot" object that can be printed to console or saved to a file.
+  #' @export
+  
+  ## Add an "S" before the sample names, because numeric column names can cause trouble
+  newSample_v <- paste0("S", gsub("S", "", sample_v))
+  
+  ## Adjust in data.table
+  whichChange_v <- which(colnames(data_dt) %in% sample_v)
+  colnames(data_dt)[whichChange_v] <- newSample_v
+  
+  ## Merge with color table
+  hexCols_v <- grep("^Hex", colnames(color_dt), value = T)
+  panelHex_v <- grep(panelCol_v, hexCols_v, value = T)
+  gateHex_v <- grep(gateCol_v, hexCols_v, value = T)
+  # data_dt <- merge(data_dt, color_dt[,mget(c(panelCol_v, gateCol_v, hexCols_v))], by = c("Subtype", "Cell"), sort = F)
+  data_dt <- merge(data_dt, color_dt[,mget(c(panelCol_v, gateCol_v, hexCols_v))], by = c(gateCol_v, panelCol_v), sort = F)
+  
+  ## Lists to hold results
+  plot_ls <- legend_ls <- zero_ls <- list()
+  
+  ## Run for each sample
+  for (i in 1:length(newSample_v)) {
+    
+    ### To Do Items:
+      ### How to handle zeroes? 
+        ### If there is a Cell group with no values, need to remove it
+        ### Same with subtype
+        ### Need to make sure the factor levels still work for plotting order
+        ### sometimes the rounded 'Pct' might say zero, but the actual value is less
+        ### Probs need to do this before the 'pos' column is decided
+      ### Need to make sure newPos never extends beyond the maximum circle value.
+        ### Example 1 - have a group that is the first 2 rows and the last 6 rows. Some of the last ones will be offset to the right (upMid_v)
+        ### Example 2 - have a group that is the last 6 rows only. The last 3 of those will be offset to the right.
+        ### Solution
+          ### Example 2 is easier - instead of going from the middle and extending either way, just start with last one and only offset to the left
+          ### Example 1 is harder - maybe need to determine a different way...
+            ### Instead of combining the original group (say rows 1-3) with the last group (say rows 15-18), could just keep them as
+            ### separate groups and have the 1st group only extend to the right and the last group only extend to the left.
+            ### could try to make this in such a way that even "normal" groups, instead of doing it the way we do it now with upMid_v and lowMid_v,
+            ### make upMid_v be the first group that extends right and lowmid_v be the second group (or vice versa and make the 1st/last groups
+            ### work like upMid/lowMid works.)
+    
+    
+    ## Get sample and data
+    currSample_v <- newSample_v[i]
+    currData_dt <- data_dt[,mget(c(panelCol_v, gateCol_v, currSample_v, hexCols_v))]
+    
+    ## Remove any zero-count rows
+    zeroRows_v <- which(currData_dt[[currSample_v]] == 0)                                # indices of rows
+    zero_dt <- currData_dt[zeroRows_v,]                                                  # subset of data with these rows only
+    zeroOut_v <- paste(zero_dt[[panelCol_v]], zero_dt[[gateCol_v]], sep = " - ")         # output vector of format 'panel - gate'
+    
+    if (length(zeroRows_v) > 0) {
+      cat(sprintf("Removing the following rows from: %s\n%s", currSample_v,              # notify user of zero rows
+                paste0("\t", paste(zeroOut_v, collapse = "\n\t"))))
+      
+      currData_dt <- currData_dt[-zeroRows_v,]                                           # remove rows from data
+      
+      ### Prep output
+      zeroOut_dt <- zero_dt[,mget(c(panelCol_v, gateCol_v, currSample_v))]               # only specific columns for output
+      zeroOut_dt[[currSample_v]] <- as.character(zeroOut_dt[[currSample_v]])             # change sample col to character, and
+      zeroOut_dt[,eval(currSample_v) := currSample_v]                                    # change it to say the sample name
+      zero_ls[[currSample_v]] <- zeroOut_dt                                              # add to list for table grob output
+    } else {
+      zero_ls[[currSample_v]] <- NULL
+    } # fi
+    
+    ## Get first level (overall sum)
+    firstLevel <- currData_dt %>% summarize(total = sum(get(currSample_v)))
+    
+    ##
+    ## Second Level ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ##
+    
+    ## Sum by cell type 
+    secondLevel <- currData_dt
+    secondLevel <- secondLevel[,Sum := sum(get(currSample_v)), by = panelCol_v]
+    
+    ## Get desired columns only and also only uniques
+    secondLevel <- unique(secondLevel[,mget(c(panelCol_v, panelHex_v, "Sum"))])
+    
+    ## Get percentage of each panel section out of total
+    secondLevel$Pct <- secondLevel$Sum / sum(secondLevel$Sum) * 100
+    
+    ## Change cell to a factor - WATCH THIS!! MAY NEED TO CHANGE IN THE FUTURE
+    secondLevel[[panelCol_v]] <- factor(secondLevel[[panelCol_v]], levels = rev(secondLevel[[panelCol_v]]))
+    
+    ## Get position in the middle of each slices (cumSum - currval/2)
+    secondLevel$runSum <- cumsum(secondLevel$Sum)
+    secondLevel$pos <- secondLevel$runSum - (secondLevel$Sum / 2)
+    
+    ##
+    ## Third Level ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ##
+    
+    ## Re-order to match second level and fix order
+    thirdLevel <- currData_dt
+    thirdLevel <- thirdLevel[order(match(get(panelCol_v), secondLevel[[panelCol_v]] ))]
+    thirdLevel[[gateCol_v]] <- factor(thirdLevel[[gateCol_v]], levels = rev(thirdLevel[[gateCol_v]]))  ### ALSO WATCH THIS!!
+    
+    ## Add columns
+    thirdLevel$runSum <- cumsum(thirdLevel[[currSample_v]])                    # running sum, used for determining text position
+    thirdLevel$pos <- thirdLevel$runSum - (thirdLevel[[currSample_v]] / 2)     # text position around circle - middle of each slice
+    thirdLevel$Xaxis <- rep(3, times = nrow(thirdLevel))                       # text position from center to edge - in line w/ slice
+    
+    ### Original values are "percent" of total (but doesn't sum to 1), want percent of each group
+    thirdLevel$Pct <- sapply(seq_along(thirdLevel[[gateCol_v]]), function(x) {
+      panel_v <- thirdLevel[x, get(panelCol_v)]                                # Find which cell class the subtype belongs to
+      sum <- sum(thirdLevel[get(panelCol_v) == panel_v, get(currSample_v)])    # sum the values of all subtypes in that cell class
+      pct_v <- thirdLevel[x, get(currSample_v)] / sum * 100                    # get percent of cell class by dividing value by sum
+    })
+    
+    ### Offset slices
+    thirdLevel$pctOfTot <- thirdLevel[[currSample_v]] / sum(thirdLevel[[currSample_v]]) * 100 # determine overall percentage of slice
+    thirdLevel[pctOfTot < 2, Xaxis := 4]                                                      # extend position outward, if slice is too small
+    
+    ### Offset the extended labels
+    #for (j in 1:(nrow(thirdLevel)-1)) {                                                  # if 1st or 2nd to last row, have to use last row as precedent
+    for (j in 1:nrow(thirdLevel)) {
+      #k <- ifelse(j == 1, nrow(thirdLevel), ifelse(j == (nrow(thirdLevel)-1), j+1, j-1)) # all others use preceding row
+      k <- ifelse(j == 1, nrow(thirdLevel), j-1)
+      if (thirdLevel$Xaxis[j] == 3 |                                                     # If this row is 3 (within slice), then keep at 3
+          thirdLevel$Xaxis[k] == 3.75) {                                                 # If preceding row is 3.75 (small extend), then keep this row at 4 (large extend)
+        next                                                                                           
+      } else if (thirdLevel$Xaxis[k] == 4) {                                             # If preceding row is 4 (large extend), then change
+        thirdLevel$Xaxis[j] <- 3.75                                                      # this row to 3.75 (small extend)
+      } # fi
+    } # for j
+    
+    ### New columns to help determine label spread and line segments
+    thirdLevel[Xaxis != 3, extend := "Yes"]                               # column to record if the label is extended (i.e. not 3)
+    thirdLevel$adjusted <- rep(FALSE, nrow(thirdLevel))                   # column to record if radial positioning has been adjusted
+    thirdLevel$newPos <- thirdLevel$pos                                   # new positioning for offsets
+    thirdLevel$Xend <- rep(3, times = nrow(thirdLevel))                   # line segment starts and ends at 3 for labels within slice
+    thirdLevel[Xaxis == 4, Xend := 3.85]                                  # extend from 3 to 3.85 for full-extend labels
+    thirdLevel[Xaxis == 3.75, Xend := 3.65]                               # extend from 3 to 3.65 for small-extend labels
+    lastRow_v <- nrow(thirdLevel)                                         # used as cut-off for offsets
+    
+    ### Determine new radial positioning for labels that are too close together
+    for (j in 1:nrow(thirdLevel)) {
+      
+      ### Determine group
+      if ( !thirdLevel$adjusted[j] &                                      # Only evaluate if the row hasn't been adjusted
+           !is.na(thirdLevel$extend[j]) ) {                               # AND the label is extended
+        
+        isNA_v <- is.na(thirdLevel$extend)                                # vector of if a row is extended (FALSE) or not (TRUE)
+        whichNA_v <- which(isNA_v)                                        # vector of positions of non-extended rows
+        availNA_v <- whichNA_v[which(whichNA_v > j)]                      # vector of non-extended rows that are past current row
+        firstNA_v <- ifelse(length(availNA_v) == 0,                       # returns position of end of group.
+                            firstNA_v <- nrow(thirdLevel)+1,              # no avaialable NA's means the current group extends until end of table
+                            firstNA_v <- min(availNA_v))                  # If available NA's, take the smallest one to make a single group
+        lastNA_v <- max(which(isNA_v))                                    # position of last row that is not extended (only used if j == 1)
+        currGrp_v <- j:(firstNA_v - 1)                                    # "extension group" is current row until 1 less than 1st non-extended row
+        
+        if (j == 1) {                                                     # for 1st row, have to check for extend group to end of circle
+          if (lastNA_v == nrow(thirdLevel)) {                             # If last non-extended row is last row of data, no new rows to add
+            lastGrp_v <- NULL
+          } else {                                                        # If last non-extended row is not last row, then "extension
+            lastGrp_v <- (lastNA_v+1):nrow(thirdLevel)                    # group" is 1 more than last non-ext row until the end
+          } # fi 
+          currGrp_v <- c(lastGrp_v, currGrp_v)                            # add either new extension group or blank
+        } # fi 
+      } else { 
+        currGrp_v <- ""                                                   # if above if statement is false, just make group blank to avoid code below.
+      }
+      
+      cat(sprintf("Starting at row %d, current group is: %s\n", 
+                  j, paste(currGrp_v, collapse = " ")))
+      
+      ### Adjust group
+      if (length(currGrp_v) > 1) {                                        # only adjust if more than 1 in the group
+        
+        if (lastRow_v %in% currGrp_v){                                    # last row is a hard cut-off and must be adjusted to a smaller pos, rather than a larger
+          lowMid_v <- which(currGrp_v == lastRow_v)                       # If group extends to front of data.table, that will be the shift-right group (even if uneven sizes)
+          upMid_v <- lowMid_v + 1
+        } else {
+          even_v <- ifelse(length(currGrp_v) %% 2 == 0, TRUE, FALSE)      # determine if even or odd length of group
+          lowMid_v <- floor( length(currGrp_v) / 2)                       # half for even, 1 less than middle if odd
+          upMid_v <- ifelse(even_v, lowMid_v + 1, lowMid_v + 2)           # adjacent if even, skip middle value if odd
+        } # fi
+
+        adjust_v <- 0.005 * firstLevel$total                              # set/reset adjustment
+        add_v <- adjust_v
+        
+        for (k in lowMid_v:1) {                                           # subtract adjustment, if on low side (left side)
+          thirdLevel$newPos[ currGrp_v[k] ] <- thirdLevel$pos[ currGrp_v[k] ] - adjust_v
+          adjust_v <- adjust_v + add_v
+        } # for k
+        
+        adjust_v <- 0.005 * firstLevel$total                              # reset adjustment
+        add_v <- adjust_v
+        
+        if (upMid_v <= length(currGrp_v)) {                               # if group ends with last row, there will actually be no right-shifting rows. TODO - is it better to switch from <= to <?
+          for (k in upMid_v:length(currGrp_v)){                           # add adjustment, if on high side (right side)
+            thirdLevel$newPos[ currGrp_v[k] ] <- thirdLevel$pos[ currGrp_v[k] ] + adjust_v
+            adjust_v <- adjust_v + 0.015
+          } # for k
+        } # fi
+        
+        thirdLevel[currGrp_v, adjusted := TRUE]                           # Update adjusted column so that these will be skipped
+        
+      } # fi
+      
+    } # for j    
+    
+    ###
+    ### PLOT ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###
+    
+    ## Re-adjust colors
+    temp1_dt <- secondLevel[,mget(c(panelCol_v, panelHex_v))]; colnames(temp1_dt) <- c("Label", "Hex")
+    temp2_dt <- thirdLevel[,mget(c(gateCol_v, gateHex_v))]; colnames(temp2_dt) <- c("Label", "Hex")
+    plotColor_dt <- rbind(temp1_dt, temp2_dt); plotColor_dt$Label <- as.character(plotColor_dt$Label)
+    
+    ## Make plot
+    first_gg <- ggplot(data = firstLevel, aes(x = 1, y = total)) +
+      geom_bar(fill = "white", stat = "identity") +
+      coord_polar("y") + 
+      guides(fill = FALSE) +
+      scale_fill_manual(limits = plotColor_dt$Label, values = plotColor_dt$Hex) +
+      ggtitle(paste0(title_v, " - ", currSample_v)) +
+      sunburst_theme
+    
+    ## panelCol level (2)
+    second_gg <- first_gg +
+      geom_bar(data = secondLevel, aes_string(x = 2, y = "Sum", fill = panelCol_v), 
+               stat = "identity", color = "white", position = "stack") +
+      geom_text(data = secondLevel, aes(label = round(Pct, digits = 1), x = 2, y = pos))
+    
+    ## gateCol level (3)
+    third_gg <- second_gg +
+      geom_bar(data = thirdLevel, aes_string(x = 3, y = currSample_v, fill = gateCol_v), 
+               stat = "identity", color = "white", position = "stack") +
+      geom_text(data = thirdLevel, aes(label = round(Pct, digits = 1), x = Xaxis, y = newPos)) +
+      geom_segment(data = thirdLevel, aes(x = 3, y = pos, xend = Xend, yend = newPos))
+    
+    ## Panel Legend
+    panelLeg_gg <- g_legend(ggplot(data = secondLevel, aes_string(x = 2, y = "Sum", fill = panelCol_v)) + geom_bar(stat = "identity") +
+                              scale_fill_manual(limits = as.character(secondLevel[[panelCol_v]]), values = secondLevel[[panelHex_v]]))
+    
+    ## Gate Legend
+    gateLeg_gg <- g_legend(ggplot(data = thirdLevel, aes_string(x = 3, y = currSample_v, fill = gateCol_v)) + geom_bar(stat = "identity") +
+                             scale_fill_manual(limits = as.character(thirdLevel[[gateCol_v]]), values = thirdLevel[[gateHex_v]]) +
+                             guides(fill = guide_legend(ncol = 2)))
+    
+    ###
+    ### ARRANGE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###
+    
+    ## Add plot to list
+    plot_ls[[currSample_v]] <- third_gg
+    
+    ## Add legends to list
+    if (i == 1) {
+      legend_ls[[panelCol_v]] <- panelLeg_gg
+      legend_ls[[gateCol_v]] <- gateLeg_gg
+    }
+    
+  } # for i
+  
+  ## merge table of missing measurements
+  if (length(zero_ls) == 1) {
+    zeroMerge_grob <- myTableGrob(zero_ls[[1]], title_v = "Zero Counts")
+  } else if (length(zero_ls) == 0){
+    zeroMerge_grob <- nullGrob()
+  } else {
+    zeroMerge_grob <- myTableGrob(mergeDTs(zero_ls, mergeCol_v = c(panelCol_v, gateCol_v)), title_v = "Zero Counts")
+  }
+  
+  ## Final output
+  out_ls <- list("plot" = plot_ls, "legend" = legend_ls, "zero" = zeroMerge_grob)
+  return(out_ls)
+  
+} # mlSunburstChart
+
+fxnlSunburstChart <- function(data_dt, panelCol_v = "Group", gateCol_v = "Calc", color_dt, sample_v, groups_v = NULL,
+                            legendCol_v = c("#EEC62C", "#0F8012", "#020D80"), title_v = "CD8 T Cell Groups") {
+  #' Multiplex Sunburst Chart
+  #' @description Sunburst chart displaying the hierarchical distribution of different immune types
+  #' @param data_dt data.table with rows = immune cell gate and columns are samples. Columns must be:
+  #' (1) Panel (2) Gate (3) Info (4) NORMALIZED.VALUES (5) SUM.ROIs (6..n) samples  ### THIS IS STILL FROM STACKED BAR - NEED TO CHANGE
+  #' @param panelCol_v character vector - name of 1st column that determines lymphoid or myeloid panel
+  #' @param gateCol_v character vector - name of 2nd column that defines the gate used
+  #' @param color_dt data.table with rows = immune cell groups and columns of various metadata as well as color specifications.
+  #' @param sample_v character vector - sample or samples to plot. Must be a valid column name of data_dt.
+  #' Should be numbers (e.g. 81, 82, 83) or numbers prepended by S (e.g. S81, S82, S83)
+  #' @param groups_v character vector - one or more of the values of panelCol_v. Must be a percentage of CD8 Functional groups.
+  #' @param legendCol_v character vector - vector of either color names or hex values.
+  #' @param title_v character vector - title for plot. Default is "Immune Cell Composition"
+  #' Required columns: 
+  #' 'Subtype' - immune cell subtype (e.g. Th0, B cell, NK, etc.)
+  #' 'Gate' - gating used. Must be equal to the gateCol_v values in data_dt
+  #' 'Hex' - hex code color.
+  #' @value returns a "gg" and "ggplot" object that can be printed to console or saved to a file.
+  #' @export
+  
+  ## Add an "S" before the sample names, because numeric column names can cause trouble
+  newSample_v <- paste0("S", gsub("S", "", sample_v))
+  
+  ## Adjust in data.table
+  whichChange_v <- which(colnames(data_dt) %in% sample_v)
+  colnames(data_dt)[whichChange_v] <- newSample_v
+  
+  ## Merge with color table
+  colorCols_v <- c("Hex", "Legend", "SubLegend")
+  data_dt <- merge(data_dt, color_dt[,mget(c(panelCol_v, gateCol_v, colorCols_v))], by = c(panelCol_v, gateCol_v), sort = F)
+  
+  ## Lists to hold results
+  plot_ls <- legend_ls <- zero_ls <- list()
+  
+  ## Run for each sample
+  for (i in 1:length(newSample_v)) {
+    
+    ## Get sample and data
+    currSample_v <- newSample_v[i]
+    currData_dt <- data_dt[,mget(c(panelCol_v, gateCol_v, currSample_v, colorCols_v))]
+    
+    ## Split data
+    currBase_dt <- currData_dt[get(panelCol_v) == "CD8Functional",]
+    currFilter_v <- currBase_dt[[gateCol_v]]
+    currSecondary_dt <- currData_dt[get(panelCol_v) != "CD8Functional",]
+    currSecondary_dt <- currSecondary_dt[get(gateCol_v) %in% currFilter_v,]
+    
+    ## Get first level (overall sum)
+    firstLevel <- currBase_dt %>% summarize(total = sum(get(currSample_v)))
+    
+    ##
+    ## Second Level ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ##
+    
+    ## Extract main CD8 Functional Groups
+    secondLevel <- currBase_dt
+    
+    ## Change cell to a factor - WATCH THIS!! MAY NEED TO CHANGE IN THE FUTURE
+    secondLevel[[gateCol_v]] <- factor(secondLevel[[gateCol_v]], levels = rev(secondLevel[[gateCol_v]]))
+    
+    ## Get position in the middle of each slices (cumSum - currval/2)
+    secondLevel$runSum <- cumsum(secondLevel[[currSample_v]])
+    secondLevel$pos <- secondLevel$runSum - (secondLevel[[currSample_v]] / 2)
+    
+    ## Make display values
+    secondLevel$display <- round(secondLevel[[currSample_v]], digits = 2)
+    
+    ##
+    ## Third Level ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ##
+    
+    ## Handle groups
+    if (is.null(groups_v)) {
+      groups_v <- unique(currSecondary_dt[[panelCol_v]])
+    }
+    
+    ## List
+    secondaryGroups_lsdt <- legendColor_lsdt <- list()
+    
+    for (k in 1:length(groups_v)) {
+      
+      ## Subset
+      currGroup_v <- groups_v[k]
+      thirdLevel <- currSecondary_dt[Group == currGroup_v,]
+      
+      ## Get remaining non-group values
+      thirdLevelOpposite <- thirdLevel
+      thirdLevelOpposite[[currSample_v]] <- 100 - thirdLevelOpposite[[currSample_v]]
+      thirdLevelOpposite[[panelCol_v]] <- paste0("not_", thirdLevelOpposite[[panelCol_v]])
+      thirdLevel <- rbind(thirdLevel, thirdLevelOpposite)
+      
+      ## Order to match second level
+      thirdLevel <- thirdLevel[order(match(get(gateCol_v), secondLevel[[gateCol_v]]))]
+      
+      ### Minimize values based on percentages
+      thirdLevel$pctOfTot <- thirdLevel[[currSample_v]]
+      
+      for (j in 1:nrow(thirdLevel)) {
+        currCalc_v <- thirdLevel[[gateCol_v]][j]
+        currTotal_v <- secondLevel[get(gateCol_v) == currCalc_v, get(currSample_v)]
+        thirdLevel[["pctOfTot"]][j] <- thirdLevel[[currSample_v]][j] * (currTotal_v / 100)
+      }
+      
+      ### Modify values for display
+      thirdLevel$display <- as.character(round(thirdLevel[[currSample_v]], digits = 2))
+      notRows_v <- grep("not_", thirdLevel[[panelCol_v]])
+      thirdLevel[notRows_v, display := ""]
+      
+      ### Get position stuff
+      thirdLevel$runSum <- cumsum(thirdLevel$pctOfTot)
+      thirdLevel$pos <- thirdLevel$runSum - (thirdLevel$pctOfTot / 2)
+      
+      ### Try factor
+      thirdLevel$plotFactor <- paste(thirdLevel[[panelCol_v]], thirdLevel[[gateCol_v]], sep = "_")
+      thirdLevel$plotFactor <- factor(thirdLevel$plotFactor, levels = rev(thirdLevel$plotFactor))
+      
+      ### Add to list
+      secondaryGroups_lsdt[[currGroup_v]] <- thirdLevel
+      
+      ### Legend color list
+      newColor_dt <- data.table("Label" = thirdLevel$plotFactor, "Hex" = rep(c(legendCol_v[k], "#FFFFFF"), nrow(thirdLevel)/2))
+      legendColor_lsdt[[currGroup_v]] <- newColor_dt
+      
+    } # for k
+    
+    ###
+    ### PLOT ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###
+    
+    ## Get plot colors for main CD8 groups
+    plotColor_dt <- color_dt[,mget(c(gateCol_v, "Hex"))]
+    colnames(plotColor_dt) <- c("Label", "Hex")
+    goodCol_v <- grep("PD|EOMES", plotColor_dt$Label)
+    plotColor_dt <- unique(plotColor_dt[goodCol_v,])
+    
+    ## Get plot colors for the plotFactor values
+    plotFactorColor_dt <- do.call(rbind, legendColor_lsdt)
+    
+    ## Get legend colors for sub-groups
+    subGroupColor_dt <- do.call(rbind, sapply(legendColor_lsdt, function(x) x[1,], simplify = F))
+    subGroupColor_dt$Label <- gsub("_.*$", "", subGroupColor_dt$Label)
+    
+    ## Combine legend data
+    legendColor_dt <- rbind(plotColor_dt, subGroupColor_dt)
+    legendColor_dt$plot <- rep(1, nrow(legendColor_dt))
+    
+    ## Combine plot data
+    plotColor_dt <- rbind(plotColor_dt, plotFactorColor_dt)
+    
+    ## Make plot
+    first_gg <- ggplot(data = firstLevel, aes(x = 1, y = total)) +
+      geom_bar(fill = "grey", stat = "identity") +
+      coord_polar("y") + 
+      guides(fill = FALSE) +
+      scale_fill_manual(limits = as.character(plotColor_dt$Label), values = plotColor_dt$Hex) +
+      ggtitle(paste0(title_v, " - ", currSample_v)) +
+      sunburst_theme
+        
+    ## gateCol level (2)
+    second_gg <- first_gg +
+      geom_bar(data = secondLevel, aes_string(x = 2, y = currSample_v, fill = gateCol_v), 
+               stat = "identity", color = "white", position = "stack", width = 1.5) +
+      geom_text(data = secondLevel, aes(label = display, x = 2, y = pos))
+
+    ## Subgroup levels
+    allLevels_v <- unname(unlist(lapply(secondaryGroups_lsdt, function(x) x$plotFactor)))
+    final_gg <- second_gg
+    
+    ## Determine width
+    width_v <- 1 / length(groups_v)
+    size_v <- 4 / length(groups_v)
+    
+    for (k in 1:length(groups_v)) {
+      ## Get data
+      currGroup_v <- groups_v[k]
+      currSubGroup_dt <- secondaryGroups_lsdt[[currGroup_v]]
+      
+      ## Testing adding more levels
+      currSubGroup_dt$plotFactor <- factor(currSubGroup_dt$plotFactor, levels = rev(allLevels_v))
+      
+      ## Have to re-name plotFactor
+      whichCol_v <- grep("plotFactor", colnames(currSubGroup_dt))
+      newName_v <- paste0(colnames(currSubGroup_dt)[whichCol_v], k)
+      colnames(currSubGroup_dt)[whichCol_v] <- newName_v
+      
+      ## Also rename display
+      whichCol_v <- grep("display", colnames(currSubGroup_dt))
+      newDisp_v <- paste0(colnames(currSubGroup_dt)[whichCol_v], k)
+      colnames(currSubGroup_dt)[whichCol_v] <- newDisp_v
+      
+      ## Add layer
+      final_gg <- final_gg +
+        geom_bar(data = currSubGroup_dt, aes_string(x = 2.5+(k*width_v), y = "pctOfTot", fill = newName_v),
+                 stat = "identity", color = "white", position = "stack", width = width_v) +
+        geom_text(data = currSubGroup_dt, aes_string(label = newDisp_v, x = 2.5+(k*width_v), y = "pos")) # , size = size_v
+    }
+    
+    ### Make 
+    legend_gg <- g_legend(ggplot(data = legendColor_dt, aes(x = 1, y = plot, fill = Label)) + geom_bar(stat = "identity") +
+                            scale_fill_manual(limits = as.character(legendColor_dt$Label), values = legendColor_dt$Hex) +
+                            labs(fill = "Group"))
+    
+    
+    ###
+    ### ARRANGE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###
+    
+    ## Add plot to list
+    plot_ls[[currSample_v]] <- final_gg
+    
+    ## Add legends to list
+    if (i == 1) {
+      legend_ls[["legend"]] <- legend_gg
+    }
+    
+  } # for i
+  
+  ## Final output
+  out_ls <- list("plot" = plot_ls, "legend" = legend_ls)
+  return(out_ls)
+  
+} # fxnlSunburstChart
+
+sunburstPlot <- function(sunburst_lslsgg, pct_v = T, type_v) {
+  #' Display sunburst chart
+  #' @description plot one or more sunburst charts with a common legend
+  #' @param sunbusrt_lsgg list of lists output by sunburstChart(). List elements are:
+  #' 'plot' - list of ggplot sunburst charts
+  #' 'legend' - list of ggplot legend grobs
+  #' 'zero' - list of zero-count rows
+  #' @param pct_v logical. TRUE (default) display pct on single sunburst outputs. FALSE - don't display percentages.
+  #' @param type_v character vector. Either 'ml' or 'fxnl'
+  #' multi-sunburst plots always remove percentages.
+  #' @export
+  
+  ### Split objects
+  plot_lsgg <- sunburst_lslsgg$plot
+  legend_lsgg <- sunburst_lslsgg$legend
+  
+  ### Get number of plots and legends
+  numPlots_v <- length(plot_lsgg)
+  numLeg_v <- length(legend_lsgg)
+  
+  ### Get title text
+  if (type_v == "ml") {
+    titleText_v <- "Immune Cell Composition"
+  } else if (type_v == "fxnl") {
+    titleText_v <- "CD8 T Cell Groups"
+  } else {
+    stop("Incorrect value for 'type_v'")
+  }
+  
+  ### Remove percentages
+  if (numPlots_v > 1 | !pct_v) {
+    
+    for (i in 1:length(plot_lsgg)) {
+      currPlot <- plot_lsgg[[i]]
+      currRemoveLayers <- which(sapply(currPlot$layers, function(x) {
+        ("GeomText" %in% class(x$geom) | "GeomSegment" %in% class(x$geom)) }))
+      currPlot$layers <- currPlot$layers[-currRemoveLayers]
+      currPlot$labels$title <- NULL
+      plot_lsgg[[i]] <- currPlot
+    } # for
+    
+    if (numPlots_v == 1){
+      title_v <- textGrob(paste0(titleText_v, " - ", names(plot_lsgg)[1]), gp = gpar(fontsize = 18))
+    } else {
+      title_v <- textGrob(titleText_v, gp = gpar(fontsize = 18))
+    } # fi
+    
+  } else {
+    title_v <- NULL
+  } # fi
+  
+  ### Make matrix
+  A <- c(rep(1,6), 2, rep(NA, 2))
+  B <- c(rep(1,6), rep(3,3))
+  C <- c(rep(1,6), rep(NA,3))
+  D <- c(rep(1,6), rep(2, 3))
+  if (numLeg_v == 2){
+    matrix_mat <- rbind(C,A,A,A,B,B,B,B,B,B)
+  } else {
+    matrix_mat <- rbind(C,D,D,D,D,D,D,D,D)
+  }
+  
+  
+  ### Get labels
+  if (numPlots_v > 1) {
+    labels_v <- names(plot_lsgg)
+  } else {
+    labels_v <- NULL
+  }
+  
+  ### Make list of grobs
+  grobs_ls <- list(ggarrange(plotlist = plot_lsgg, labels = labels_v))
+  for (i in 1:length(numLeg_v)) {
+    grobs_ls[[i+1]] <- legend_lsgg[[i]]
+  }
+  
+  ### Output
+  grid.arrange(grobs = grobs_ls, layout_matrix = matrix_mat, top = title_v)
+  
+} # sunburstPlot
+
