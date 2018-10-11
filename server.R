@@ -16,7 +16,11 @@ library(shiny)
 library(data.table)
 library(DT)
 library(gridExtra)
+library(gtable)
+library(grid)
+library(ggpubr)
 library(writexl)
+library(dplyr)
 
 ### Code
 files_v <- list.files("./scripts/", full.names = T)
@@ -73,13 +77,18 @@ server <- shinyServer(function(input, output, session) {
     }})
   
   ## Test again
-  observe({if (!is.null(fxnlAllData())) {
+  #observe({if (!is.null(fxnlAllData())) {
+  observe({if (!is.null(dataInfo$data)) {
+    print("dataInfo$data: "); print(dataInfo$data[1:5,1:5])
+    print("class(dataInfo$data): "); print(class(dataInfo$data))
+    print("dataInfo$c1: "); print(dataInfo$c1)
     updateSelectInput(session, "fxnlPop", choices = c("all", unique(dataInfo$data[,get(dataInfo$c1)])), selected = "all")
     updateSelectInput(session, "fxnlSamples", choices = c("all", setdiff(names(dataInfo$data), c(dataInfo$c1, dataInfo$c2))), selected = "all")
   }})
   
   ## Update gates
-  observe({if (!is.null(fxnlAllData())) {
+  #observe({if (!is.null(fxnlAllData())) {
+  observe({if (!is.null(dataInfo$data)) {
     if (!is.null(input$fxnlPop)) {
       if (input$fxnlPop == "all") {
         currGate_v <- unique(dataInfo$data[,get(dataInfo$c2)])
@@ -234,7 +243,7 @@ server <- shinyServer(function(input, output, session) {
       updateSelectInput(session, "hBarGrp", choices = unique(data[, Group]))
       updateSelectInput(session, "hBarSample", choices = c("all", setdiff(names(data), c("Group", "Calc"))), selected = "all")
     }
-  }) # update pieGrp and pieSample
+  }) # update hBarGrp and hBarSample
   
   ## Plotting logic - set to TRUE if "plot" button is pressed, FALSE if 'clear' is pressed. Default is FALSE
   hBarPlot_logical <- reactiveVal(value = FALSE)
@@ -261,7 +270,7 @@ server <- shinyServer(function(input, output, session) {
   
   ## Get plot
   outputFxnlHBar <- reactive({
-    if (piePlot_logical()) {
+    if (hBarPlot_logical()) {
       hBar <- horizBar(data_dt = fxnlCalcData(),
                             group_v = input$hBarGrp,
                             sample_v = input$hBarSample,
@@ -282,7 +291,7 @@ server <- shinyServer(function(input, output, session) {
   ## Reactive value
   hBarMessage_v <- reactiveVal(); hBarMessage_v("blank")
   
-  ## Write pie
+  ## Write horizontal bar
   observeEvent(input$saveFxnlHBar, {
     ## Make name
     out_v <- file.path(input$fxnlHBarOutDir, input$fxnlHBarOutName)
@@ -298,6 +307,88 @@ server <- shinyServer(function(input, output, session) {
   output$fxnlHBarUpdate <- renderText({ if (hBarMessage_v() == "blank") { return(NULL) } else { hBarMessage_v() } })
 
   output$tester <- renderPlot(plot(1:10))
+  
+  ####################
+  ### SUNBURST TAB ###~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ####################
+  
+  ## Update grouping variable options
+  observe({
+    if (is.null(fxnlCalcData())){
+      return(NULL)
+    } else {
+      data <- fxnlCalcData()
+      #updateSelectInput(session, "fSunGrp", choices = c("all", "PctKi67", "PctGRZB+"), selected = "all")
+      updateSelectInput(session, "fSunSample", choices = c("all", setdiff(names(data), c("Group", "Calc"))), selected = "all")
+    }
+  }) # update fSunSample
+  
+  ## Plotting logic - set to TRUE if "plot" button is pressed, FALSE if 'clear' is pressed. Default is FALSE
+  fSunPlot_logical <- reactiveVal(value = FALSE)
+  observeEvent(input$doPlotFSun, {fSunPlot_logical(TRUE)})
+  observeEvent(input$stopPlotFSun, {fSunPlot_logical(FALSE)})
+  
+  ## Update output filename based on select arguments
+  observe({
+    if (is.null(fxnlCalcData())) {
+      return(NULL)
+    } else {
+      
+      baseName_v <- "fxnlSun"
+      
+      for (id in c("fSunGrp", "fSunSample")){
+        baseName_v <- addName(input, id, baseName_v)
+      }
+      
+      baseName_v <- paste0(gsub(" ", "_", baseName_v), ".pdf")
+      
+      updateTextInput(session, "fxnlSunOutName", value = baseName_v)
+    }
+  }) # update filename
+  
+  ## Get plot
+  outputFxnlSun <- reactive({
+    if (fSunPlot_logical()) {
+      cat("Functional Calc Data:\n")
+      print(fxnlCalcData()[1:5,1:5])
+      cat("Sample_v:\n")
+      print(input$fSunSample)
+      cat("Groups_v:\n")
+      print(input$fSunGrp)
+      fSun <- fxnlSunburstChart(data_dt = fxnlCalcData(),
+                                color_dt = functionalColors_dt,
+                                sample_v = input$fSunSample,
+                                groups_v = input$fSunGrp)
+      return(fSun)
+    } else {
+      return(NULL)
+    }
+  })
+  
+  ## Plot
+  output$fxnlSun <- renderPlot({
+    if (fSunPlot_logical()) {
+      sunburstPlot(sunburst_lslsgg = outputFxnlSun(), type_v = "fxnl", pct_v = input$fSunPct)
+    }
+  })
+  
+  ## Reactive value
+  fSunMessage_v <- reactiveVal(); fSunMessage_v("blank")
+  
+  ## Write horizontal bar
+  observeEvent(input$saveFxnlSun, {
+    ## Make name
+    out_v <- file.path(input$fxnlSunOutDir, input$fxnlSunOutName)
+    ## Make message
+    fSunMessage_v(paste0("Saved current view to: ", out_v))
+    ## Plot
+    pdf(file = out_v)
+    sunburstPlot(sunburst_lslsgg = outputFxnlSun(), type_v = "fxnl", pct_v = input$fSunPct)
+    dev.off()
+  })
+  
+  ## Update user
+  output$fxnlSunUpdate <- renderText({ if (fSunMessage_v() == "blank") { return(NULL) } else { fSunMessage_v() } })
 
   ##################################
   ### MYELOID/LYMPHOID PANEL TAB ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -487,6 +578,80 @@ server <- shinyServer(function(input, output, session) {
   
   ## Update user
   output$mlSbarUpdate <- renderText({ if (sBarMessage_v() == "blank") {return(NULL)} else { sBarMessage_v() } })
+  
+  ####################
+  ### SUNBURST TAB ###~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ####################
+  
+  ## Update grouping variable options
+  observe({
+    if (is.null(mlCalcData())){
+      return(NULL)
+    } else {
+      data <- mlCalcData()[["ratio"]]
+      updateSelectInput(session, "mlSunSample", choices = c("all", setdiff(names(data), c("Subtype", "Cell"))), selected = "all")
+    }
+  }) # update fSunSample
+  
+  ## Plotting logic - set to TRUE if "plot" button is pressed, FALSE if 'clear' is pressed. Default is FALSE
+  mlSunPlot_logical <- reactiveVal(value = FALSE)
+  observeEvent(input$doPlotMLSun, {mlSunPlot_logical(TRUE)})
+  observeEvent(input$stopPlotMLSun, {mlSunPlot_logical(FALSE)})
+  
+  ## Update output filename based on select arguments
+  observe({
+    if (is.null(mlCalcData())) {
+      return(NULL)
+    } else {
+      
+      baseName_v <- "mlSun"
+      
+      for (id in "mlSunSample"){
+        baseName_v <- addName(input, id, baseName_v)
+      }
+      
+      baseName_v <- paste0(gsub(" ", "_", baseName_v), ".pdf")
+      
+      updateTextInput(session, "mlSunOutName", value = baseName_v)
+    }
+  }) # update filename
+  
+  ## Get plot
+  outputMLSun <- reactive({
+    if (mlSunPlot_logical()) {
+      mlSun <- mlSunburstChart(data_dt = mlCalcData()[["ratio"]],
+                               color_dt = merge(cellTypeColors_dt, subTypeColors_dt, by = "Cell", sort = F, suffixes = c("_Cell", "_Subtype")),
+                               sample_v = input$mlSunSample)
+      return(mlSun)
+    } else {
+      return(NULL)
+    }
+  })
+  
+  ## Plot
+  output$mlSun <- renderPlot({
+    if (mlSunPlot_logical()) {
+      sunburstPlot(sunburst_lslsgg = outputMLSun(), type_v = "ml", pct_v = input$mlSunPct)
+    }
+  })
+  
+  ## Reactive value
+  mlSunMessage_v <- reactiveVal(); mlSunMessage_v("blank")
+  
+  ## Write horizontal bar
+  observeEvent(input$saveMLSun, {
+    ## Make name
+    out_v <- file.path(input$mlSunOutDir, input$mlSunOutName)
+    ## Make message
+    mlSunMessage_v(paste0("Saved current view to: ", out_v))
+    ## Plot
+    pdf(file = out_v)
+    sunburstPlot(sunburst_lslsgg = outputMLSun(), type_v = "ml", pct_v = input$mlSunPct)
+    dev.off()
+  })
+  
+  ## Update user
+  output$mlSunUpdate <- renderText({ if (mlSunMessage_v() == "blank") { return(NULL) } else { mlSunMessage_v() } })
   
 }) # shinyServer
 
