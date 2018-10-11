@@ -140,7 +140,11 @@ ui <- shinyUI(fluidPage(
                           ) # mainPanel - FunctionalPanel - PieCharts
                         ) # sidebarLayout - FunctionalPanel - PieCharts
                 ), # tabPanel - FunctionalPanel - PieCharts
-
+               
+               #############################
+               ### HORIZONTAL BAR CHARTS ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+               #############################
+               
                tabPanel("Horizontal Bar Chart",
 
                         sidebarLayout(
@@ -183,7 +187,58 @@ ui <- shinyUI(fluidPage(
                         ) # sidebarLayout - FunctionalPanel - horizontalBar
 
 
-             ) # tabPanel - FunctionalPanel - horizontalBar
+             ), # tabPanel - FunctionalPanel - horizontalBar
+             
+             #######################
+             ### SUNBURST CHARTS ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             #######################
+             
+             tabPanel("Sunburst Chart",
+                      
+                      sidebarLayout(
+                        sidebarPanel(
+                          h3("Sunburst Chart for CD8 T Cell Groups"),
+                          h6("You must upload data in the 'View Data' tab first."),
+                          br(),
+                          selectInput(inputId = "fSunGrp", # Pct Ki67, etc.
+                                      label = h4("Select Which Sub-Group(s) to Plot"),
+                                      choices = c("all", "PctKi67", "PctGRZB+"),
+                                      selected = "all",
+                                      multiple = T),
+                          selectInput(inputId = "fSunSample",
+                                      label = h4("Select Which Sample(s) to Plot"),
+                                      choices = "all",
+                                      selected = "all",
+                                      multiple = T),
+                          checkboxInput(inputId = "fSunPct",
+                                        label = h4("Output Percentages"),
+                                        value = TRUE),
+                          br(),
+                          h4("Plot"),
+                          actionButton(inputId = "doPlotFSun", label = "Plot"),
+                          actionButton(inputId = "stopPlotFSun", label = "Clear"),
+                          br(),
+                          h4("Save"),
+                          ## Output file name
+                          textInput(inputId = "fxnlSunOutName",
+                                    label = "Output File Name",
+                                    value = "fxnlSun.pdf"),
+                          ## Output directory
+                          textInput(inputId = "fxnlSunOutDir",
+                                    label = "Output Directory",
+                                    value = "~/Downloads"),
+                          ## Download
+                          actionButton(inputId = "saveFxnlSun", label = "Download Current Data View"),
+                          ## Update user
+                          textOutput(outputId = "fxnlSunUpdate")
+                        ), # sidebarPanel - FunctionalPanel - Sunburst
+                        
+                        mainPanel(plotOutput("fxnlSun", width = 1000, height = 1000)
+                        ) # mainPanel - FunctionalPanel - Sunburst
+                      ) # sidebarLayout - FunctionalPanel - Sunburst
+                      
+                      
+             ) # tabPanel - FunctionalPanel - sunburst
              ) # tabsetPanel - FunctionalPanel
     ),
              
@@ -290,7 +345,53 @@ ui <- shinyUI(fluidPage(
                           ), #sidebarPanel
                           mainPanel(plotOutput("mlSbar", width = 1000, height = 1000))
                           #mainPanel(DT::dataTableOutput("calc"))
-                        )) # sidebarLayout, tabPanel
+                        )), # sidebarLayout, tabPanel
+               
+               #######################
+               ### SUNBURST CHARTS ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+               #######################
+               
+               tabPanel("Sunburst Chart",
+                        
+                        sidebarLayout(
+                          sidebarPanel(
+                            h3("Sunburst Chart for Immune Cell Composition"),
+                            h6("You must upload data in the 'View Data' tab first."),
+                            br(),
+                            selectInput(inputId = "mlSunSample",
+                                        label = h4("Select Which Sample(s) to Plot"),
+                                        choices = "all",
+                                        selected = "all",
+                                        multiple = T),
+                            checkboxInput(inputId = "mlSunPct",
+                                          label = h4("Output Percentages"),
+                                          value = TRUE),
+                            br(),
+                            h4("Plot"),
+                            actionButton(inputId = "doPlotMLSun", label = "Plot"),
+                            actionButton(inputId = "stopPlotMLSun", label = "Clear"),
+                            br(),
+                            h4("Save"),
+                            ## Output file name
+                            textInput(inputId = "mlSunOutName",
+                                      label = "Output File Name",
+                                      value = "mlSun.pdf"),
+                            ## Output directory
+                            textInput(inputId = "mlSunOutDir",
+                                      label = "Output Directory",
+                                      value = "~/Downloads"),
+                            ## Download
+                            actionButton(inputId = "saveMLSun", label = "Download Current Data View"),
+                            ## Update user
+                            textOutput(outputId = "mlSunUpdate")
+                          ), # sidebarPanel - FunctionalPanel - horizontalBar
+                          
+                          mainPanel(plotOutput("mlSun", width = 1000, height = 1000)
+                          ) # mainPanel - myeloid/lymphoid Panel - sunburst
+                        ) # sidebarLayout - myeloid/lymphoid Panel - sunburst
+                        
+                        
+               ) # tabPanel - myeloid/lymphoid Panel - sunburst
              ) # tabsetPanel
     ) # tabPanel
   ) # tabset panel
