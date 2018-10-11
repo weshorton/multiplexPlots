@@ -296,7 +296,9 @@ stackedBar <- function(data_dt, panelCol_v = "Cell", gateCol_v = "Subtype", colo
   # }
   
   ## Merge data and colors
-  merge_dt <- merge(data_dt, color_dt, by = "Subtype", sort = F, all.x = F, all.y = T)
+  # merge_dt <- merge(data_dt, color_dt, by = "Subtype", sort = F, all.x = F, all.y = T)
+  merge_dt <- merge(data_dt, color_dt, by = gateCol_v, sort = F, all.x = F, all.y = T)
+  
   
   ## Melt
   id_v <- setdiff(colnames(merge_dt), sample_v)
@@ -340,6 +342,11 @@ mlSunburstChart <- function(data_dt, panelCol_v = "Cell", gateCol_v = "Subtype",
   #' 'Hex' - hex code color.
   #' @value returns a "gg" and "ggplot" object that can be printed to console or saved to a file.
   #' @export
+  
+  ### Handle Sample
+  if (sample_v == "all") {
+    sample_v <- setdiff(colnames(data_dt), c(panelCol_v, gateCol_v))
+  } # fi
   
   ## Add an "S" before the sample names, because numeric column names can cause trouble
   newSample_v <- paste0("S", gsub("S", "", sample_v))
@@ -634,6 +641,16 @@ fxnlSunburstChart <- function(data_dt, panelCol_v = "Group", gateCol_v = "Calc",
   #' @value returns a "gg" and "ggplot" object that can be printed to console or saved to a file.
   #' @export
   
+  ### Handle Sample
+  if (sample_v == "all") {
+    sample_v <- setdiff(colnames(data_dt), c(panelCol_v, gateCol_v))
+  } # fi
+  
+  ## Handle groups
+  if (is.null(groups_v) | groups_v == "all") {
+    groups_v <- c("PctKi67", "PctGRZB+")
+  }
+  
   ## Add an "S" before the sample names, because numeric column names can cause trouble
   newSample_v <- paste0("S", gsub("S", "", sample_v))
   
@@ -684,11 +701,6 @@ fxnlSunburstChart <- function(data_dt, panelCol_v = "Group", gateCol_v = "Calc",
     ##
     ## Third Level ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ##
-    
-    ## Handle groups
-    if (is.null(groups_v)) {
-      groups_v <- unique(currSecondary_dt[[panelCol_v]])
-    }
     
     ## List
     secondaryGroups_lsdt <- legendColor_lsdt <- list()
