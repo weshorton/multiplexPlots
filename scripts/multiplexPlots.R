@@ -909,7 +909,7 @@ sunburstPlot <- function(sunburst_lslsgg, pct_v = T, type_v) {
   
   ### Make list of grobs
   grobs_ls <- list(ggarrange(plotlist = plot_lsgg, labels = labels_v))
-  for (i in 1:length(numLeg_v)) {
+  for (i in 1:numLeg_v) {
     grobs_ls[[i+1]] <- legend_lsgg[[i]]
   }
   
