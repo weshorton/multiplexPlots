@@ -163,7 +163,9 @@ server <- shinyServer(function(input, output, session) {
       return(NULL)
     } else {
       data <- fxnlCalcData()
-      updateSelectInput(session, "pieGrp", choices = unique(data[, Group]))
+      pieGrp_v <- unique(data[, Group])
+      pieGrp_v <- setdiff(pieGrp_v, c("pctCD45", "PctKi67", "PctGRZB+", "CD4", "PctIl10_CD3negCD68pos"))
+      updateSelectInput(session, "pieGrp", choices = pieGrp_v)
       updateSelectInput(session, "pieSample", choices = c("all", setdiff(names(data), c("Group", "Calc"))), selected = "all")
     }
   }) # update pieGrp and pieSample
