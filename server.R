@@ -11,23 +11,35 @@
 ### DEPENDENCIES ###
 ####################
 
-### Libraries
-library(shiny)
-library(data.table)
-library(DT)
-library(gridExtra)
-library(gtable)
-library(grid)
-library(ggpubr)
-library(writexl)
-library(dplyr)
+### Source bioconductor installer
+suppressMessages(source("https://bioconductor.org/biocLite.R"))
+
+### Required libraries
+libraries_v <- c("shiny", "data.table", "DT", "gridExtra", "gtable", "grid",
+                 "ggpubr", "writexl", "dplyr", "ggplot2")
+
+### Check which are not installed
+installedPackages_v <- rownames(installed.packages())
+missingPackages_v <- setdiff(libraries_v, installedPackages_v)
+
+### Install missing packages
+cranPackages_v <- rownames(available.packages())
+sapply(missingPackages_v, function(x) {
+  if (x %in% cranPackages_v) {
+    install.packages(x)                          # base installer if CRAN package
+  } else {
+    biocLite(x, ask = F, suppressUpdates = T)    # biocLite if bioconductor package
+  } # fi
+})
+
+### Load libraries
+invisible(sapply(libraries_v, function(x) library(x, character.only = T)))
 
 ### Code
 files_v <- list.files("./scripts/", full.names = T)
 invisible(lapply(files_v, function(x) source(x)))
 source("./ui.R")
 source("./fxns.R")
-source("./temp.R")
 
 ### Options
 options(shiny.maxRequestSize=1000*1024^2)

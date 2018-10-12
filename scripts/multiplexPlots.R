@@ -2,9 +2,6 @@
 ### PLOTTING FUNCTIONS
 ###
 
-library(data.table)
-library(ggplot2)
-
 ##############
 ### THEMES ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##############
@@ -201,11 +198,6 @@ horizBar <- function(data_dt, groupCol_v = "Group", calcCol_v = "Calc", group_v,
   #' @param colors_v vector of colors for the bars. If only one bar per category, will use grey, otherwise will use the colors specified.
   #' @value returns a "gg" and "ggplot" object that can be printed to console or saved to a file.
   #' @export
-   
-  ## Dependencies
-  library(data.table)
-  library(grid)
-  library(ggplot2)
   
   ## Subset data
   sub_dt <- data_dt[get(groupCol_v) %in% group_v,]
