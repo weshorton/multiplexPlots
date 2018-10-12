@@ -14,15 +14,16 @@ from Coussens Lab functional and myeloid/lymphoid panels. This is for macOS only
         1. Copy run.command to Desktop (or preferred location)
 	1. Get location of repository download (either `pwd` in your terminal, or from finder, right-click and select "Copy")
 	1. Open your `~/.bash_profile` and add `MULTIPLEX_DIR` variable using the above path
-	1. Double-click on run.command icon from your Desktop
 
-	```
-	nano ~/.bash_profile
-	<scroll to bottom of file>
-	<type the following:>
-	export MULTIPLEX_DIR=/path/to/repository/download
-	<save (control+X, and then type "Y", and then ENTER>
-	```
+		```
+		<open terminal app>
+		<type> nano ~/.bash_profile
+		<scroll to bottom of file>
+		<type the following:>
+		export MULTIPLEX_DIR=/path/to/repository/download
+		<save> (control+X, and then type "Y", and then ENTER)
+		```
+	1. Double-click on run.command icon from your Desktop
  
 3. Load data in the 'View Data' panel
 4. View different plots, selecting samples and groups to display
