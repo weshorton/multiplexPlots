@@ -621,7 +621,7 @@ server <- shinyServer(function(input, output, session) {
       return(NULL)
     } else {
       
-      baseName_v <- "mlSun"
+      baseName_v <- paste0("mlSun_", input$mlSunGrp)
       
       for (id in "mlSunSample"){
         baseName_v <- addName(input, id, baseName_v)
@@ -636,9 +636,27 @@ server <- shinyServer(function(input, output, session) {
   ## Get plot
   outputMLSun <- reactive({
     if (mlSunPlot_logical()) {
-      mlSun <- mlSunburstChart(data_dt = mlCalcData()[["ratio"]],
-                               color_dt = merge(cellTypeColors_dt, subTypeColors_dt, by = "Cell", sort = F, suffixes = c("_Cell", "_Subtype")),
-                               sample_v = input$mlSunSample)
+      ## Get arguments
+      if (input$mlSunGrp == "Immune Cell Composition") {
+        currData_dt <- mlCalcData()[["ratio"]]
+        currColor_dt <- merge(cellTypeColors_dt, subTypeColors_dt, by = "Cell", sort = F, suffixes = c("_Cell", "_Subtype"))
+        currCellCol_v <- "Cell"; currSubCol_v <- "Subtype"
+        currType_v <- "immuneComp"
+      } else if (input$mlSunGrp == "CD4 T Cell Subsets") {
+        currData_dt <- mlCalcData()[["norm"]]
+        currColor_dt <- tCellColors_dt
+        currCellCol_v <- "Gate"; currSubCol_v <- "Info"
+        currType_v <- "cd4"
+      } else { 
+        stop(sprintf("Incorrect input$mlSunGrp. Should be 'Immune Cell Composition' or 'CD4 T Cell Subsets', but is: %s", input$mlSunGrp))
+      } # fi
+      ## Make plot
+      mlSun <- mlSunburstChart(data_dt = currData_dt,
+                               color_dt = currColor_dt,
+                               sample_v = input$mlSunSample,
+                               cellCol_v = currCellCol_v,
+                               subCol_v = currSubCol_v,
+                               type_v = currType_v)
       return(mlSun)
     } else {
       return(NULL)
@@ -648,7 +666,8 @@ server <- shinyServer(function(input, output, session) {
   ## Plot
   output$mlSun <- renderPlot({
     if (mlSunPlot_logical()) {
-      sunburstPlot(sunburst_lslsgg = outputMLSun(), type_v = "ml", pct_v = input$mlSunPct)
+      currType_v <- ifelse(input$mlSunGrp == "Immune Cell Composition", "immune", "cd4")
+      sunburstPlot(sunburst_lslsgg = outputMLSun(), type_v = currType_v, pct_v = input$mlSunPct)
     }
   })
   
@@ -661,9 +680,11 @@ server <- shinyServer(function(input, output, session) {
     out_v <- file.path(input$mlSunOutDir, input$mlSunOutName)
     ## Make message
     mlSunMessage_v(paste0("Saved current view to: ", out_v))
+    ## Get type
+    currType_v <- ifelse(input$mlSunGrp == "Immune Cell Composition", "immune", "cd4")
     ## Plot
     pdf(file = out_v)
-    sunburstPlot(sunburst_lslsgg = outputMLSun(), type_v = "ml", pct_v = input$mlSunPct)
+    sunburstPlot(sunburst_lslsgg = outputMLSun(), type_v = currType_v, pct_v = input$mlSunPct)
     dev.off()
   })
   

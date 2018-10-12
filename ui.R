@@ -363,6 +363,10 @@ ui <- shinyUI(fluidPage(
                                         choices = "all",
                                         selected = "all",
                                         multiple = T),
+                            selectInput(inputId = "mlSunGrp", # Pct Ki67, etc.
+                                        label = h4("Select Which Sub-Group(s) to Plot"),
+                                        choices = c("Immune Cell Composition", "CD4 T Cell Subsets"),
+                                        selected = "Immune Cell Composition"),
                             checkboxInput(inputId = "mlSunPct",
                                           label = h4("Output Percentages"),
                                           value = TRUE),
