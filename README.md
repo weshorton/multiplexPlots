@@ -8,23 +8,22 @@ from Coussens Lab functional and myeloid/lymphoid panels. This is for macOS only
 1. Make sure you have R installed (https://cran.r-project.org/bin/macosx/)
 1. Download/clone this repository
 1. Navigate to downloaded location and start the Shiny app using one of the following methods:
-    1. In your finder, double-click on `run.command`
-    2. From the terminal, `sh run.command`
-    3. From your desktop
-        1. Copy run.command to Desktop (or preferred location)
-	1. Get location of repository download (either `pwd` in your terminal, or from finder, right-click and select "Copy")
-	1. Open your `~/.bash_profile` and add `MULTIPLEX_DIR` variable using the above path
+	1. In your finder, double-click on `run.command`
+	2. From the terminal, `sh run.command`
+	3. From your desktop
+		1. Copy run.command to Desktop (or preferred location)
+		1. Get location of repository download (either `pwd` in your terminal, or from finder, right-click and select "Copy")
+		1. Open your `~/.bash_profile` and add `MULTIPLEX_DIR` variable using the above path
 
-		```
-		<open terminal app>
-		<type> nano ~/.bash_profile
-		<scroll to bottom of file>
-		<type the following:>
-		export MULTIPLEX_DIR=/path/to/repository/download
-		<save> (control+X, and then type "Y", and then ENTER)
-		```
-	1. Double-click on run.command icon from your Desktop
- 
+			```
+			<open terminal app>
+			<type> nano ~/.bash_profile
+			<scroll to bottom of file>
+			<type the following:>
+			export MULTIPLEX_DIR=/path/to/repository/download
+			<save> (control+X, and then type "Y", and then ENTER)
+			```
+		1. Double-click on run.command icon from your Desktop
 3. Load data in the 'View Data' panel
 4. View different plots, selecting samples and groups to display
 
