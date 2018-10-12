@@ -973,7 +973,7 @@ sunburstPlot <- function(sunburst_lslsgg, pct_v = T, type_v) {
   } else if (type_v == "cd4") {
     titleText_v <- "CD4 T Cell Subsets"
   } else {
-    stop("Incorrect value for 'type_v'")
+    stop(sprintf("Incorrect value for 'type_v'. Can be: 'immune', 'fxnl', 'cd4', you have: %s", type_v))
   }
   
   ### Remove percentages
