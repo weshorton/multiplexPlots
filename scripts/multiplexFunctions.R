@@ -2,17 +2,6 @@
 ### MULTIPLEX FUNCTIONS
 ###
 
-#########################
-### TESTING ARGUMENTS ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#########################
-
-# input_xlsx <- "~/projs/Coussens/multiplex/data/final_functional.xlsx"
-# sheetName_v <- "raw data"
-# popCol_v <- "Population"
-# gateCol_v <- "Gate"
-# calcs_v <- c("pctCD45", "majorImmune", "PctCD8.CD45", "CD8Functional", "PctKi67", "PctGRZB+", "CD4", "PctIl10_CD3negCD68pos")
-# slides_v <- NULL
-
 ################
 ### READ RAW ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ################
@@ -391,19 +380,9 @@ checkSum <- function(data_dt, slides_v, name_v = NA) {
   if (length(badSums_v) > 0) warning(sprintf("%s doesn't add up to 100.", name_v))
 }
 
-###############
-### READ ML ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-###############
-
-### For testing
-# input_xlsx <- "~/projs/Coussens/multiplex/data/finalfinal_ML_goodFormat_badCalculations.xlsx"
-# sheetName_v <- "Cohort"
-# panelCol_v <- "Panel"
-# gateCol_v <- "Gate"
-# infoCol_v <- "Info"
-# slides_v <- NULL
-# rawData_ls <- readRaw(input_xlsx = input_xlsx, sheetName_v = "Cohort", popCol_v = "Panel", gateCol_v = "Gate", infoCol_v = "Info")
-# sum_dt <- rawData_ls$sum
+######################
+### ML CALCULATION ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+######################
 
 mlCalculations <- function(sum_dt, slides_v = NULL, panelCol_v = "Panel", gateCol_v = "Gate", infoCol_v = "Info") {
   #' Perform different calcualtions on Myeloid/Lymphoid panel summed ROIs
@@ -446,19 +425,25 @@ mlCalculations <- function(sum_dt, slides_v = NULL, panelCol_v = "Panel", gateCo
     
     ## Add back
     sum_dt[[currSlide_v]] <- c(currMyeloid_v, currLymphoid_v)
-  }
+  } # for i
   
   ##
   ## RATIOS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ##
   
+  ## Make data.table to hold ratio information
   ratio_dt <- data.table("Cell" = c(rep("T-Cell", 6), rep("Lymphoid", 2), "Dendritic Cell", rep("Macrophage", 4), rep("Dendritic Cell", 2), rep("Granulocyte", 2)),
                          "Subtype" = c("Th0", "Treg", "Th17", "Th2", "Th1", "CD8 T Cells", "NK Cells", "B Cells", "myeloid other",
                                        "CD163- myelomono", "CD163+ myelomono", "CD163- TAM", "CD163+ TAM", "immature DCs", "mature DCs", "neutrophil", "mast cell"))
   
   cd68pos_v <- c("CD163- myelomono", "CD163+ myelomono", "CD163- TAM", "CD163+ TAM")
   
-  ratio_dt <- merge(ratio_dt, sum_dt[,mget(c(infoCol_v, slides_v))], by.x = "Subtype", by.y = infoCol_v, sort = F, all.x = T)
+  ## Subset sum_dt - We want Th0, Treg, etc. But those values are listed in infoCol_v twice. 
+  ## Once for main one, and another for PDL1+ version
+  ## We want the main one
+  goodCols_v <- grep("PDL1|PD1", sum_dt[[gateCol_v]], value = T, invert = T)
+  ratio_dt <- merge(ratio_dt, sum_dt[get(gateCol_v) %in% goodCols_v, mget(c(infoCol_v, slides_v))], 
+                    by.x = "Subtype", by.y = infoCol_v, sort = F, all.x = T)
   
   new_mat <- matrix(nrow = 6, ncol = length(slides_v))
   
