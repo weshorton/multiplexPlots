@@ -221,8 +221,14 @@ server <- shinyServer(function(input, output, session) {
     out_v <- file.path(input$fxnlPieOutDir, input$fxnlPieOutName)
     ## Make message
     pieMessage_v(paste0("Saved current view to: ", out_v))
+    ## Determine width and height
+    height_v <- width_v <- 7
+    if (length(outputFxnlPie()) > 6) {
+      height_v <- height_v * (ceiling(sqrt(length(outputFxnlPie()))) / 2)
+      width_v <- height_v
+    } 
     ## Plot
-    pdf(file = out_v)
+    pdf(file = out_v, width = width_v, height = height_v)
     grid.arrange(grobs = outputFxnlPie())
     dev.off()
   })
@@ -375,14 +381,23 @@ server <- shinyServer(function(input, output, session) {
   ## Reactive value
   fSunMessage_v <- reactiveVal(); fSunMessage_v("blank")
   
-  ## Write horizontal bar
+  ## Write sunburst
   observeEvent(input$saveFxnlSun, {
     ## Make name
     out_v <- file.path(input$fxnlSunOutDir, input$fxnlSunOutName)
     ## Make message
     fSunMessage_v(paste0("Saved current view to: ", out_v))
+    ## Determine width and height
+    height_v <- width_v <- 7
+    if (length(outputFxnlSun()$plot) > 6) {
+      # height_v <- height_v * (ceiling(sqrt(length(outputFxnlSun()$plot))) / 2)
+      # width_v <- height_v
+      height_v <- width_v <- 20
+    }
+    cat(sprintf("Width: %s\n", width_v))
+    cat(sprintf("Height: %s\n", height_v))
     ## Plot
-    pdf(file = out_v)
+    pdf(file = out_v, width = width_v, height = height_v)
     sunburstPlot(sunburst_lslsgg = outputFxnlSun(), type_v = "fxnl", pct_v = input$fSunPct)
     dev.off()
   })
