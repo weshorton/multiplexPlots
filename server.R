@@ -24,13 +24,16 @@ missingPackages_v <- setdiff(libraries_v, installedPackages_v)
 
 ### Install missing packages
 cranPackages_v <- rownames(available.packages())
-sapply(missingPackages_v, function(x) {
-  if (x %in% cranPackages_v) {
-    install.packages(x)                          # base installer if CRAN package
-  } else {
-    biocLite(x, ask = F, suppressUpdates = T)    # biocLite if bioconductor package
-  } # fi
-})
+if (length(missingPackages_v) > 0) {
+  sapply(missingPackages_v, function(x) {
+    if (x %in% cranPackages_v) {
+      install.packages(x, repos = "http://cran.us.r-project.org")           # base installer if CRAN package
+    } else {
+      biocLite(x, ask = F, suppressUpdates = T)                             # biocLite if bioconductor package
+    } # fi
+  })
+} # fi
+
 
 ### Load libraries
 invisible(sapply(libraries_v, function(x) library(x, character.only = T)))
