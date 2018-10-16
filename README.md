@@ -5,25 +5,39 @@ from Coussens Lab functional and myeloid/lymphoid panels. This is for macOS only
 
 ## Quick Start
 
-1. Make sure you have R installed (https://cran.r-project.org/bin/macosx/)
+1. Make sure you have R installed (https://cran.r-project.org/bin/macosx/) 
+1. Optionally install Rstudio (https://www.rstudio.com/products/rstudio/download/)
+1. All required libraries will be auto-downloaded, except for shiny (currently working on a fix for this). To install shiny:
+	1. From Rstudio
+		1. Open Rstudio
+		2. type `install.packges("shiny")` or go to `Tools` -> `Install Packages...` in the menu bar
+	1. From R
+		1. Open R from the terminal
+		2. type `install.packages("shiny")`
+		3. exit `q()`
 1. Download/clone this repository
 1. Navigate to downloaded location and start the Shiny app using one of the following methods:
-	1. In your finder, double-click on `run.command`
-	2. From the terminal, `sh run.command`
-	3. From your desktop
-		1. Copy run.command to Desktop (or preferred location)
-		1. Get location of repository download (either `pwd` in your terminal, or from finder, right-click and select "Copy")
-		1. Open your `~/.bash_profile` and add `MULTIPLEX_DIR` variable using the above path
+	1. **Mac**
+		1. In your finder, double-click on `run.command`
+		2. From the terminal, `sh run.command`
+		3. From your desktop
+			1. Copy run.command to Desktop (or preferred location)
+			1. Get location of repository download (either `pwd` in your terminal, or from finder, right-click and select "Copy")
+			1. Open your `~/.bash_profile` and add `MULTIPLEX_DIR` variable using the above path
 
-			```
-			<open terminal app>
-			<type> nano ~/.bash_profile
-			<scroll to bottom of file>
-			<type the following:>
-			export MULTIPLEX_DIR=/path/to/repository/download
-			<save> (control+X, and then type "Y", and then ENTER)
-			```
-		1. Double-click on run.command icon from your Desktop
+				```
+				<open terminal app>
+				<type> nano ~/.bash_profile
+				<scroll to bottom of file>
+				<type the following:>
+				export MULTIPLEX_DIR=/path/to/repository/download
+				<save> (control+X, and then type "Y", and then ENTER)
+				```
+			1. Double-click on run.command icon from your Desktop
+	1. **Windows**
+		1. Navigate to the repository and open the `run.bat` file for editing
+		1. Change the first portion: (`C:\Program Files\R\R-3.5.1\bin\R.exe`) to the appropriate path to R.exe for your computer
+		1. Double-click on `run.bat` to execute
 3. Load data in the 'View Data' panel
 4. View different plots, selecting samples and groups to display
 
