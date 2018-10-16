@@ -16,7 +16,7 @@ suppressMessages(source("https://bioconductor.org/biocLite.R"))
 
 ### Required libraries
 libraries_v <- c("shiny", "data.table", "DT", "gridExtra", "gtable", "grid",
-                 "ggpubr", "writexl", "dplyr", "ggplot2")
+                 "ggpubr", "writexl", "dplyr", "ggplot2", "readxl")
 
 ### Check which are not installed
 installedPackages_v <- rownames(installed.packages())
