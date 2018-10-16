@@ -23,7 +23,7 @@ installedPackages_v <- rownames(installed.packages())
 missingPackages_v <- setdiff(libraries_v, installedPackages_v)
 
 ### Install missing packages
-cranPackages_v <- rownames(available.packages())
+cranPackages_v <- rownames(available.packages(repos = "http://cran.us.r-project.org"))
 if (length(missingPackages_v) > 0) {
   sapply(missingPackages_v, function(x) {
     if (x %in% cranPackages_v) {
