@@ -395,7 +395,78 @@ ui <- shinyUI(fluidPage(
                         ) # sidebarLayout - myeloid/lymphoid Panel - sunburst
                         
                         
-               ) # tabPanel - myeloid/lymphoid Panel - sunburst
+               ), # tabPanel - myeloid/lymphoid Panel - sunburst
+               
+               ######################
+               ### IMMUNE HEATMAP ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+               ######################
+               
+               tabPanel("Heatmap",
+                        
+                        sidebarLayout(
+                          sidebarPanel(
+                            h3("Heatmap of Immune Cell Composition"),
+                            h6("You must upload data in the 'View Data' tab first."),
+                            br(),
+                            selectInput(inputId = "mlHeatRowDist",
+                                        label = h4("Distance Metric for Rows"),
+                                        choices = c("manhattan", "euclidean", "maximum", "canberra", "binary", "minkowski"),
+                                        selected = "manhattan"),
+                            selectInput(inputId = "mlHeatRowClust",
+                                        label = h4("Clustering Method for Rows"),
+                                        choices = c("ward.D", "ward.D2", "single", "complete", "average", "mcquitty", "median", "centroid"),
+                                        selected = "ward.D"),
+                            selectInput(inputId = "mlHeatColDist",
+                                        label = h4("Distance Metric for Columns"),
+                                        choices = c("manhattan", "euclidean", "maximum", "canberra", "binary", "minkowski"),
+                                        selected = "manhattan"),
+                            selectInput(inputId = "mlHeatColClust",
+                                        label = h4("Clustering Method for Columns"),
+                                        choices = c("ward.D", "ward.D2", "single", "complete", "average", "mcquitty", "median", "centroid"),
+                                        selected = "ward.D"),
+                            checkboxInput(inputId = "mlHeatRowClustLogical",
+                                          label = h4("Perform Row Clustering?"),
+                                          value = FALSE),
+                            checkboxInput(inputId = "mlHeatColClustLogical",
+                                          label = h4("Perform Column Clustering?"),
+                                          value = TRUE),
+                            selectInput(inputId = "mlHeatColAnnotation",
+                                        label = h4("Column Annotation Groups"),
+                                        choices = c("Cell", "Subtype", "Panel", NA),
+                                        multiple = TRUE),
+                            selectInput(inputId = "mlHeatLegend",
+                                        label = h4("Annotation Legends"),
+                                        choices = "all",
+                                        selected = "all",
+                                        multiple = TRUE),
+                            textInput(inputId = "mlHeatTitle",
+                                      label = h4("Plot Title"),
+                                      value = "Immune Composition Heatmap",
+                                      width = '100%'),
+                            br(),
+                            h4("Plot"),
+                            actionButton(inputId = "doPlotMLHeat", label = "Plot"),
+                            actionButton(inputId = "stopPlotMLHeat", label = "Clear"),
+                            br(),
+                            h4("Save"),
+                            ## Output file name
+                            textInput(inputId = "mlHeatOutName",
+                                      label = "Output File Name",
+                                      value = "mlHeat.pdf"),
+                            ## Output directory
+                            textInput(inputId = "mlHeatOutDir",
+                                      label = "Output Directory",
+                                      value = "~/Downloads"),
+                            ## Download
+                            actionButton(inputId = "saveMLHeat", label = "Download Current Data View"),
+                            ## Update user
+                            textOutput(outputId = "mlHeatUpdate")
+                          ), # sidebarPanel - FunctionalPanel - horizontalBar
+                          
+                          mainPanel(plotOutput("mlHeat", width = 1000, height = 1000)
+                          ) # mainPanel - myeloid/lymphoid Panel - heatmap
+                        ) # sidebarLayout - myeloid/lymphoid Panel - heatmap
+               ) # tabPanel - myeloid/lymphoid Panel - heatmap
              ) # tabsetPanel
     ) # tabPanel
   ) # tabset panel

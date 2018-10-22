@@ -15,8 +15,9 @@
 suppressMessages(source("https://bioconductor.org/biocLite.R"))
 
 ### Required libraries
-libraries_v <- c("shiny", "data.table", "DT", "gridExtra", "gtable", "grid",
-                 "ggpubr", "writexl", "dplyr", "ggplot2", "readxl")
+libraries_v <- c("shiny", "data.table", "DT", "gridExtra", 
+                 "gtable", "grid", "ggpubr", "writexl", "dplyr", 
+                 "ggplot2", "readxl", "pheatmap", "RColorBrewer")
 
 ### Check which are not installed
 installedPackages_v <- rownames(installed.packages())
@@ -52,6 +53,7 @@ cellTypeColors_dt <- fread("./data/cellTypeColors.txt")
 functionalColors_dt <- fread("./data/functionalColors.txt")
 subTypeColors_dt <- fread("./data/subTypeColors.txt")
 tCellColors_dt <- fread("./data/tCellColors.txt")
+panelColors_dt <- fread("./data/panelColors.txt")
 
 server <- shinyServer(function(input, output, session) {
   
@@ -470,13 +472,15 @@ server <- shinyServer(function(input, output, session) {
     }})
   
   ## Update available Population and Sample based on which input is selected
-  observe({if (!is.null(mlAllData())) {
+  #observe({if (!is.null(mlAllData())) {
+  observe({if (!is.null(mlData$data)) {
     updateSelectInput(session, "mlPanel", choices = c("all", unique(mlData$data[,get(mlData$c1)])), selected = "all")
     updateSelectInput(session, "mlSamples", choices = c("all", setdiff(names(mlData$data), c(mlData$c1, mlData$c2, mlData$c3))), selected = "all")
   }})
   
   ## Update gates
-  observe({if (!is.null(mlAllData())) {
+  #observe({if (!is.null(mlAllData())) {
+  observe({if (!is.null(mlData$data)) {
     if (!is.null(input$mlPanel)) {
       if (input$mlPanel == "all") {
         currMLGate_v <- unique(mlData$data[, get(mlData$c2)])
@@ -705,6 +709,91 @@ server <- shinyServer(function(input, output, session) {
   
   ## Update user
   output$mlSunUpdate <- renderText({ if (mlSunMessage_v() == "blank") { return(NULL) } else { mlSunMessage_v() } })
+  
+  ###################
+  ### HEATMAP TAB ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ###################
+  
+  ## Update legend
+  observe({if (!is.null(mlCalcData()[["ratio"]])) {
+    updateSelectInput(session, "mlHeatLegend", choices = c("all", "Sample", input$mlHeatColAnnotation), selected = "all")
+  }})
+  
+  ## Plotting logic - set to TRUE if "plot" button is pressed, FALSE if 'clear' is pressed. Default is FALSE
+  mlHeatPlot_logical <- reactiveVal(value = FALSE)
+  observeEvent(input$doPlotMLHeat, {mlHeatPlot_logical(TRUE)})
+  observeEvent(input$stopPlotMLHeat, {mlHeatPlot_logical(FALSE)})
+  
+  ## Update output filename based on select arguments
+  observe({
+    if (is.null(mlCalcData())) {
+      return(NULL)
+    } else {
+      
+      baseName_v <- "mlHeat"
+      
+      for (id in "mlHeatColAnnotation"){
+        baseName_v <- addName(input, id, baseName_v)
+      }
+      
+      baseName_v <- paste0(gsub(" ", "_", baseName_v), ".pdf")
+      
+      updateTextInput(session, "mlHeatOutName", value = baseName_v)
+    }
+  }) # update filename
+  
+  ## Get plot
+  outputMLHeat <- reactive({
+    if (mlHeatPlot_logical()) {
+      
+      print("mlHeatColAnnotation:"); print(input$mlHeatColAnnotation)
+      print("mlHeatLegend:"); print(input$mlHeatLegend)
+      print("mlCalData()[['ratio']]:"); print(mlCalcData()[["ratio"]][1:5,1:5])
+      
+      mlHeat <- mlHeatmap(data_dt            = mlCalcData()[["ratio"]],
+                          rowDist_v          = input$mlHeatRowDist,
+                          rowClust_v         = input$mlHeatRowClust,
+                          clusterRow_v       = input$mlHeatRowClustLogical,
+                          colDist_v          = input$mlHeatColDist,
+                          colClust_v         = input$mlHeatColClust,
+                          clusterCol_v       = input$mlHeatColClustLogical,
+                          colAnnotation_v    = input$mlHeatColAnnotation,
+                          legends_v          = input$mlHeatLegend,
+                          title_v            = input$mlHeatTitle,
+                          cellColor_dt       = cellTypeColors_dt,
+                          subColor_dt        = subTypeColors_dt,
+                          panelColor_dt      = panelColors_dt)
+
+      return(mlHeat)
+    } else {
+      return(NULL)
+    }
+  })
+  
+  ## Plot
+  output$mlHeat <- renderPlot({
+    if (mlHeatPlot_logical()) {
+      grid.newpage(); grid.draw(outputMLHeat())
+    } # fi
+  })
+  
+  ## Reactive value
+  mlHeatMessage_v <- reactiveVal(); mlHeatMessage_v("blank")
+  
+  ## Write horizontal bar
+  observeEvent(input$saveMLHeat, {
+    ## Make name
+    out_v <- file.path(input$mlHeatOutDir, input$mlHeatOutName)
+    ## Make message
+    mlHeatMessage_v(paste0("Saved current view to: ", out_v))
+    ## Plot
+    pdf(file = out_v)
+    grid.draw(outputMLHeat())
+    dev.off()
+  })
+  
+  ## Update user
+  output$mlHeatUpdate <- renderText({ if (mlHeatMessage_v() == "blank") { return(NULL) } else { mlHeatMessage_v() } })
   
 }) # shinyServer
 
