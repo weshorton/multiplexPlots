@@ -1,0 +1,4 @@
+Panel	Hex	R	G	B	H	S	V
+Lymphoid	#07F900	2.9	97.7	-0.4	118	100.4	97.7
+Myeloid Other	#FFA501	100	64.6	0.2	38.7	99.8	100
+Myeloid	#A535EB	64.7	20.8	92.2	276.9	77.4	92.2
