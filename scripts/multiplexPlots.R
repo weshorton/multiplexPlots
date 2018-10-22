@@ -1020,3 +1020,208 @@ sunburstPlot <- function(sunburst_lslsgg, pct_v = T, type_v) {
   
 } # sunburstPlot
 
+###############
+### HEATMAP ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+###############
+
+mlHeatmap <- function(data_dt, cellCol_v = "Cell", subCol_v = "Subtype", 
+                      rowDist_v = "manhattan", rowClust_v = "ward.D",
+                      colDist_v = "minkowski", colClust_v = "ward.D",
+                      clusterRow_v = T, clusterCol_v = T,
+                      colAnnotation_v = c("Cell", "Subtype", "Panel"),
+                      patientColors_v = c(brewer.pal(10, "Paired"), brewer.pal(6, "Dark2"), brewer.pal(8, "Set3")),
+                      heatColors_v = colorRampPalette(c("red", "yellow", "green"))(n = 299),
+                      cellColor_dt = NA, subColor_dt = NA, panelColor_dt = NA, legends_v = "all",
+                      title_v = NULL, ...) {
+  #' Multiplex Sunburst Chart
+  #' @description Sunburst chart displaying the hierarchical distribution of different immune types
+  #' @param data_dt data.table with rows = immune cell group and columns are samples. Should be the "$ratio" object from the list output
+  #' by mlCalculations(). Columns are:
+  #' (1) Subtype - Th0, Treg, Th17, etc.
+  #' (2) Cell - T-Cell, Lymphoid, etc.
+  #' (3..n) Sample columns
+  #' @param cellCol_v character vector - name of column that determines Cell type. Default value is "Cell".
+  #' @param subCol_v character vector - name of column that determines Subtype. Default value is "Subtype".
+  #' @param rowDist_v - distance method to use for rows. Default is "manhattan" 
+  #' Other options are: "euclidean", "maximum", "canberra", "binary" or "minkowski". See ?dist for more information.
+  #' @param rowClust_v - clustering method to use for rows. Default is "ward.D"
+  #' Other options are: "ward.D2", "single", "complete", "average", "mcquitty", "median", "centroid". See ?hclust for more information.
+  #' @param colDist_v - distance method to use for columns. Default is "minkowski". See rowDist_v for other options.
+  #' @param colClust_v - clustering method to use for columns. Default is "ward.D". See rowClust_v for other options.
+  #' @param clusterRow_v - logical. TRUE - cluster; FALSE - don't cluster
+  #' @param clusterCol_v - logical. TRUE - cluster; FALSE - don't cluster
+  #' @param colAnnotation_v - vector of column names to annotate. Must also be a column in color_dt. Can be NA to skip column annotation.
+  #' @param patientColors_v - vector of colors to use for row annotations. Must have at least as many elements as there are patients.
+  #' @param heatColors_v color palette for heatmap cells.
+  #' @param cellColor_dt data.table with colors for cell types (T-Cell, Lymphoid, etc.). 
+  #' Requires 1 column with same name as cellCol_v and one column called 'Hex' with the hex color codes
+  #' @param subColor_dt data.table with colors for subtypes (Th0, Treg, neutrophil, etc.)
+  #' Requires 1 column with the same name as subCol_v and one column called 'Hex' with the hex color codes.
+  #' Also requires 1 column with cellColor_dt$cellCol_v values and 1 with panelColor_dt$Panel values.
+  #' @param panelColor_dt data.table with colors for panel (Lymphoid, Myeloid Other, Myeloid).
+  #' Requires 1 column called "Panel" and one called 'Hex' with the hex color codes
+  #' @param legends_v character vector - determine which legends to plot. Can only be values from colAnnotation_v. 
+  #' NA (default) will plot none. "all" will plot all.
+  #' @param title_v character vector - title for plot. 
+  #' @param ... Other parameters to be fed into pheatmap. See ?pheatmap for options.
+  #' @value returns a "gg" and "ggplot" object that can be printed to console or saved to a file.
+  #' @export
+  #' 
+  
+  ###
+  ### REFORMAT DATA ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ###
+  
+  ### Remove unwanted rows (i.e. don't have a 'Cell' value)
+  data_dt <- data_dt[!is.na(get(cellCol_v)),]
+  
+  ### Remove cell, but keep for reference
+  cellSubtype_dt <- data_dt[,mget(c(cellCol_v, subCol_v))]
+  keepCols_v <- setdiff(colnames(data_dt), cellCol_v)
+  data_dt <- data_dt[,mget(keepCols_v)]
+  
+  ### Transpose
+  data_mat <- t(data_dt)
+  colNames_v <- data_mat[1,]; data_mat <- data_mat[-1,]
+  colnames(data_mat) <- colNames_v
+  data_mat <- apply(data_mat, 2, as.numeric)
+  rownames(data_mat) <- setdiff(colnames(data_dt), c(cellCol_v, subCol_v))
+  
+  ###
+  ### CALCULATE DISTANCES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ###
+  
+  ### Rows
+  if (clusterRow_v) {
+    rowDist_dist <- dist(data_mat, method = rowDist_v)
+    rowClust_hclust <- hclust(rowDist_dist, method = rowClust_v)
+  } else {
+    rowClust_hclust <- F
+  } # fi
+  
+  ### Columns
+  if (clusterCol_v) {
+    colDist_dist <- dist(t(data_mat), method = colDist_v)
+    colClust_hclust <- hclust(colDist_dist, method = colClust_v)
+  } else {
+    colClust_hclust <- F
+  } # fi
+  
+  ###
+  ### PREPARE PLOTTING ANNOTATION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ###
+  
+  ### Row Annotations
+  rowAnnot_dt <- data.table(Sample = rownames(data_mat)); rownames(rowAnnot_dt) <- rowAnnot_dt$Sample
+  if (ncol(rowAnnot_dt) > length(patientColors_v)) stop("Too few patient colors. Please add more.")
+  patientColors_v <- patientColors_v[1:nrow(rowAnnot_dt)]
+  names(patientColors_v) <- rowAnnot_dt$Sample
+  annColors_lsv <- list("Sample" = patientColors_v)
+  
+  ###
+  ### Column Annotations
+  ###
+  
+  ### Make list of color data.tables
+  color_lsdt <- list("Panel" = panelColor_dt)
+  color_lsdt[[cellCol_v]] <- cellColor_dt
+  color_lsdt[[subCol_v]] <- subColor_dt
+  
+  ### Combine together into one annotation data.table
+  if (!is.na(colAnnotation_v)) {
+    
+    ## Make main color data.table
+    colAnnot_dt <- subColor_dt[,mget(c(union(subCol_v, colAnnotation_v), "Hex"))]
+    colnames(colAnnot_dt)[ncol(colAnnot_dt)] <- paste(subCol_v, colnames(colAnnot_dt)[ncol(colAnnot_dt)], sep = "_")
+    
+    ## Add the others
+    for (col_v in setdiff(colAnnotation_v, subCol_v)) {
+      colAnnot_dt <- merge(colAnnot_dt, color_lsdt[[col_v]][,mget(c(col_v, "Hex"))], sort = F)
+      colnames(colAnnot_dt)[ncol(colAnnot_dt)] <- paste(col_v, colnames(colAnnot_dt)[ncol(colAnnot_dt)], sep = "_")
+    } # for col_v
+    
+    ## Add colors to list
+    for (col_v in colAnnotation_v) {
+      first_v <- match(unique(colAnnot_dt[[paste0(col_v, "_Hex")]]), colAnnot_dt[[paste0(col_v, "_Hex")]])
+      annColors_lsv[[col_v]] <- colAnnot_dt[[paste0(col_v, "_Hex")]][first_v]
+      names(annColors_lsv[[col_v]]) <- colAnnot_dt[[col_v]][first_v]
+    } # for col_v
+    
+    ## Remove hex columns and add rownames
+    colAnnot_dt <- colAnnot_dt[,mget(colAnnotation_v)]
+    rownames(colAnnot_dt) <- subColor_dt[[subCol_v]]
+    
+  } else {
+    colAnnot_dt <- NA
+  } # fi !is.na
+  
+  ###
+  ### MAKE PLOT ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ###
+  
+  ### Scale data
+  plot_mat <- scale(data_mat)
+  
+  ### Get extra parameters
+  extraParams_ls <- list(...)
+  
+  ### Get standard parameters
+  stdParams_ls <- list(mat                  = plot_mat,
+                       color                = heatColors_v,
+                       cluster_rows         = rowClust_hclust,
+                       cluster_cols         = colClust_hclust,
+                       annotation_row       = rowAnnot_dt,
+                       annotation_col       = colAnnot_dt,
+                       annotation_colors    = annColors_lsv,
+                       main                 = title_v,
+                       silent               = TRUE)
+  
+  ### Plot
+  heat_p <- do.call(pheatmap, c(stdParams_ls, extraParams_ls))
+  
+  ###
+  ### HANDLE ANNOTATIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ###
+  
+  ### Extract gtable and legend grob index
+  heat_gtable <- heat_p$gtable
+  whichGrob_v <- which(heat_gtable$layout$name == "annotation_legend")
+  
+  ### Remove legend, if specified
+  if (is.na(legends_v)) {
+    
+    heat_gtable$grobs[[whichGrob_v]] <- NULL
+    heat_gtable$layout <- heat_gtable$layout[-whichGrob_v,]
+    
+  } else {
+    ### Remove specific legends
+    if (legends_v != "all") {
+      
+      ### Remove sample annotations, if specified
+      if (length(grep("Sample|sample", legends_v)) == 0) stdParams_ls[["annotation_row"]] <- NA
+      
+      ### Remove column legends, if specified
+      keepLegends_v <- intersect(legends_v, colnames(colAnnot_dt))
+      tempRow_v <- rownames(colAnnot_dt)
+      colAnnot_dt <- colAnnot_dt[,mget(keepLegends_v)]
+      rownames(colAnnot_dt) <- tempRow_v
+      
+      ### Add back to parameter list
+      stdParams_ls[["annotation_col"]] <- colAnnot_dt
+      
+      ### Make new heatmap
+      temp_p <- do.call(pheatmap, c(stdParams_ls, extraParams_ls))
+      
+      ### Extract legend grob
+      legend_grob <- temp_p$gtable$grobs[[which(temp_p$gtable$layout$name == "annotation_legend")]]
+      
+      ### Add back to heat
+      heat_gtable$grobs[[whichGrob_v]] <- legend_grob
+     
+    } # fi
+  } # fi
+  
+  ### Return copy invisibly
+  invisible(heat_gtable)
+  
+} # mlHeatmap
