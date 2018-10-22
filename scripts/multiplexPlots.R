@@ -1127,6 +1127,9 @@ mlHeatmap <- function(data_dt, cellCol_v = "Cell", subCol_v = "Subtype",
   color_lsdt[[cellCol_v]] <- cellColor_dt
   color_lsdt[[subCol_v]] <- subColor_dt
   
+  ### Handle shiny NA
+  if (colAnnotation_v == "NA") colAnnotation_v <- NA
+  
   ### Combine together into one annotation data.table
   if (!is.na(colAnnotation_v)) {
     
@@ -1188,7 +1191,7 @@ mlHeatmap <- function(data_dt, cellCol_v = "Cell", subCol_v = "Subtype",
   whichGrob_v <- which(heat_gtable$layout$name == "annotation_legend")
   
   ### Remove legend, if specified
-  if (is.na(legends_v)) {
+  if (is.na(legends_v) | legends_v == "NA") {
     
     heat_gtable$grobs[[whichGrob_v]] <- NULL
     heat_gtable$layout <- heat_gtable$layout[-whichGrob_v,]
@@ -1198,13 +1201,20 @@ mlHeatmap <- function(data_dt, cellCol_v = "Cell", subCol_v = "Subtype",
     if (legends_v != "all") {
       
       ### Remove sample annotations, if specified
-      if (length(grep("Sample|sample", legends_v)) == 0) stdParams_ls[["annotation_row"]] <- NA
+      if (length(grep("Sample|sample", legends_v)) == 0) {
+        stdParams_ls[["annotation_row"]] <- NA
+        legends_v <- setdiff(legends_v, c("Sample", "sample"))
+      } # fi
       
       ### Remove column legends, if specified
       keepLegends_v <- intersect(legends_v, colnames(colAnnot_dt))
-      tempRow_v <- rownames(colAnnot_dt)
-      colAnnot_dt <- colAnnot_dt[,mget(keepLegends_v)]
-      rownames(colAnnot_dt) <- tempRow_v
+      if (length(keepLegends_v) > 0){
+        tempRow_v <- rownames(colAnnot_dt)
+        colAnnot_dt <- colAnnot_dt[,mget(keepLegends_v)]
+        rownames(colAnnot_dt) <- tempRow_v
+      } else {
+        colAnnot_dt <- NA
+      }
       
       ### Add back to parameter list
       stdParams_ls[["annotation_col"]] <- colAnnot_dt
