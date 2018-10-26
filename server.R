@@ -213,11 +213,11 @@ server <- shinyServer(function(input, output, session) {
   ## Get plot
   outputFxnlPie <- reactive({
     if (piePlot_logical()) {
-      pies <- plotPie(fxnlCalcData(),
-                      group_v = input$pieGrp,
-                      sample_v = input$pieSample,
-                      color_dt = functionalColors_dt,
-                      pct_v = input$piePct)
+      pies <- plotPie(data_dt    = fxnlCalcData(),
+                      group_v    = input$pieGrp,
+                      sample_v   = input$pieSample,
+                      color_dt   = functionalColors_dt,
+                      pct_v      = input$piePct)
       return(pies)
     } else {
       return(NULL)
@@ -296,10 +296,10 @@ server <- shinyServer(function(input, output, session) {
   ## Get plot
   outputFxnlHBar <- reactive({
     if (hBarPlot_logical()) {
-      hBar <- horizBar(data_dt = fxnlCalcData(),
-                            group_v = input$hBarGrp,
-                            sample_v = input$hBarSample,
-                            color_dt = functionalColors_dt)
+      hBar <- horizBar(data_dt         = fxnlCalcData(),
+                            group_v    = input$hBarGrp,
+                            sample_v   = input$hBarSample,
+                            color_dt   = functionalColors_dt)
       return(hBar)
     } else {
       return(NULL)
@@ -380,10 +380,10 @@ server <- shinyServer(function(input, output, session) {
       print(input$fSunSample)
       cat("Groups_v:\n")
       print(input$fSunGrp)
-      fSun <- fxnlSunburstChart(data_dt = fxnlCalcData(),
-                                color_dt = functionalColors_dt,
-                                sample_v = input$fSunSample,
-                                groups_v = input$fSunGrp)
+      fSun <- fxnlSunburstChart(data_dt    = fxnlCalcData(),
+                                color_dt   = functionalColors_dt,
+                                sample_v   = input$fSunSample,
+                                groups_v   = input$fSunGrp)
       return(fSun)
     } else {
       return(NULL)
@@ -581,9 +581,9 @@ server <- shinyServer(function(input, output, session) {
   ## Get plot
   outputMLSBar <- reactive({
     if (sBarPlot_logical()) {
-      sBar <- stackedBar(mlCalcData()[["ratio"]],
-                         color_dt = subTypeColors_dt,
-                         sample_v = input$mlSbarSample)
+      sBar <- stackedBar(data_dt    = mlCalcData()[["ratio"]],
+                         color_dt   = subTypeColors_dt,
+                         sample_v   = input$mlSbarSample)
       return(sBar)
     } else {
       return(NULL)
@@ -670,12 +670,12 @@ server <- shinyServer(function(input, output, session) {
         stop(sprintf("Incorrect input$mlSunGrp. Should be 'Immune Cell Composition' or 'CD4 T Cell Subsets', but is: %s", input$mlSunGrp))
       } # fi
       ## Make plot
-      mlSun <- mlSunburstChart(data_dt = currData_dt,
-                               color_dt = currColor_dt,
-                               sample_v = input$mlSunSample,
-                               cellCol_v = currCellCol_v,
-                               subCol_v = currSubCol_v,
-                               type_v = currType_v)
+      mlSun <- mlSunburstChart(data_dt     = currData_dt,
+                               color_dt    = currColor_dt,
+                               sample_v    = input$mlSunSample,
+                               cellCol_v   = currCellCol_v,
+                               subCol_v    = currSubCol_v,
+                               type_v      = currType_v)
       return(mlSun)
     } else {
       return(NULL)
