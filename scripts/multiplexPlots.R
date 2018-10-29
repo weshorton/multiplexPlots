@@ -297,6 +297,7 @@ stackedBar <- function(data_dt, panelCol_v = "Cell", gateCol_v = "Subtype", colo
     geom_bar(position = "fill", stat = "identity", width = 0.5) +
     scale_fill_manual(limits = as.character(melt_dt[[gateCol_v]]), values = melt_dt$Hex) +
     labs(y = "% of CD45+ cells", x = "CD45+ Cells") + ggtitle("Immune Cell Composition") +
+    guides(fill = guide_legend(reverse = T)) +
     stacked_theme
     
   ## Return
@@ -1167,6 +1168,7 @@ mlHeatmap <- function(data_dt, cellCol_v = "Cell", subCol_v = "Subtype",
   
   ### Get extra parameters
   extraParams_ls <- list(...)
+  #extraParams_ls <- list(cellheight = 10)
   
   ### Get standard parameters
   stdParams_ls <- list(mat                  = plot_mat,
