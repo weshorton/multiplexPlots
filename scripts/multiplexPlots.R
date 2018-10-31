@@ -736,8 +736,10 @@ fxnlSunburstChart <- function(data_dt, groupCol_v = "Group", calcCol_v = "Calc",
   } # fi
   
   ## Handle groups
-  if (is.null(groups_v) | groups_v == "all") {
-    groups_v <- c("PctKi67", "PctGRZB+")
+  if (is.null(groups_v)) {
+    cat("groups_v argument is NULL. Selecting PctKi67 as outer level.\n")
+    cat("Please specify groups_v argument if you would like to display PctGRZB+\n")
+    groups_v <- "PctKi67"
   }
   
   ## Add an "S" before the sample names, because numeric column names can cause trouble
