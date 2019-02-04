@@ -1,0 +1,53 @@
+plotFactor	Legend	SubLegend	Hex
+Tnaive	Naive T Cell	NA	#F9E3D5
+Tcm	Central Memory T Cell	NA	#F8CBAD
+Tem	Effector Memory T Cell	NA	#C5DCB6
+Temra	Terminally Differentiated Effector Memory T Cell	NA	#BDD6ED
+Tnaive_PD1+ EOMES+	PD1+ EOMES+	exhausted	#E2635C
+Tnaive_PD1- EOMES+	PD1- EOMES+	early effector	#A8CF85
+Tnaive_PD1+ EOMES-	PD1+ EOMES-	late effector	#6BA9ED
+Tnaive_PD1- EOMES-	PD1- EOMES-	memory	#8A68AC
+Tcm_PD1+ EOMES+	PD1+ EOMES+	exhausted	#E2635C
+Tcm_PD1- EOMES+	PD1- EOMES+	early effector	#A8CF85
+Tcm_PD1+ EOMES-	PD1+ EOMES-	late effector	#6BA9ED
+Tcm_PD1- EOMES-	PD1- EOMES-	memory	#8A68AC
+Tem_PD1+ EOMES+	PD1+ EOMES+	exhausted	#E2635C
+Tem_PD1- EOMES+	PD1- EOMES+	early effector	#A8CF85
+Tem_PD1+ EOMES-	PD1+ EOMES-	late effector	#6BA9ED
+Tem_PD1- EOMES-	PD1- EOMES-	memory	#8A68AC
+Temra_PD1+ EOMES+	PD1+ EOMES+	exhausted	#E2635C
+Temra_PD1- EOMES+	PD1- EOMES+	early effector	#A8CF85
+Temra_PD1+ EOMES-	PD1+ EOMES-	late effector	#6BA9ED
+Temra_PD1- EOMES-	PD1- EOMES-	memory	#8A68AC
+Tnaive_PD1+ EOMES+_PctKi67	PctKi67+	NA	#FDE49C
+Tnaive_PD1+ EOMES+_not_PctKi67		NA	#FFFFFF
+Tnaive_PD1- EOMES+_PctKi67	PctKi67+	NA	#FDE49C
+Tnaive_PD1- EOMES+_not_PctKi67		NA	#FFFFFF
+Tnaive_PD1+ EOMES-_PctKi67	PctKi67+	NA	#FDE49C
+Tnaive_PD1+ EOMES-_not_PctKi67		NA	#FFFFFF
+Tnaive_PD1- EOMES-_PctKi67	PctKi67+	NA	#FDE49C
+Tnaive_PD1- EOMES-_not_PctKi67		NA	#FFFFFF
+Tcm_PD1+ EOMES+_PctKi67	PctKi67+	NA	#FDE49C
+Tcm_PD1+ EOMES+_not_PctKi67		NA	#FFFFFF
+Tcm_PD1- EOMES+_PctKi67	PctKi67+	NA	#FDE49C
+Tcm_PD1- EOMES+_not_PctKi67		NA	#FFFFFF
+Tcm_PD1+ EOMES-_PctKi67	PctKi67+	NA	#FDE49C
+Tcm_PD1+ EOMES-_not_PctKi67		NA	#FFFFFF
+Tcm_PD1- EOMES-_PctKi67	PctKi67+	NA	#FDE49C
+Tcm_PD1- EOMES-_not_PctKi67		NA	#FFFFFF
+Tem_PD1+ EOMES+_PctKi67	PctKi67+	NA	#FDE49C
+Tem_PD1+ EOMES+_not_PctKi67		NA	#FFFFFF
+Tem_PD1- EOMES+_PctKi67	PctKi67+	NA	#FDE49C
+Tem_PD1- EOMES+_not_PctKi67		NA	#FFFFFF
+Tem_PD1+ EOMES-_PctKi67	PctKi67+	NA	#FDE49C
+Tem_PD1+ EOMES-_not_PctKi67		NA	#FFFFFF
+Tem_PD1- EOMES-_PctKi67	PctKi67+	NA	#FDE49C
+Tem_PD1- EOMES-_not_PctKi67		NA	#FFFFFF
+Temra_PD1+ EOMES+_PctKi67	PctKi67+	NA	#FDE49C
+Temra_PD1+ EOMES+_not_PctKi67		NA	#FFFFFF
+Temra_PD1- EOMES+_PctKi67	PctKi67+	NA	#FDE49C
+Temra_PD1- EOMES+_not_PctKi67		NA	#FFFFFF
+Temra_PD1+ EOMES-_PctKi67	PctKi67+	NA	#FDE49C
+Temra_PD1+ EOMES-_not_PctKi67		NA	#FFFFFF
+Temra_PD1- EOMES-_PctKi67	PctKi67+	NA	#FDE49C
+Temra_PD1- EOMES-_not_PctKi67		NA	#FFFFFF

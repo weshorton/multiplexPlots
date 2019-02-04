@@ -1,0 +1,10 @@
+Group	Calc	Legend	SubLegend	Hex
+CD8Functional	PD1+ EOMES-	PD1+ EOMES-	late effector	#6BA9ED
+CD8Functional	PD1+ EOMES+	PD1+ EOMES+	exhausted	#E2635C
+CD8Functional	PD1- EOMES+	PD1- EOMES+	early effector	#A8CF85
+CD8Functional	PD1- EOMES-	PD1- EOMES-	memory	#8A68AC
+CD8Functional	Tnaive	Na•ve T Cell	NA	#F9E3D5
+CD8Functional	Tcm	Central Memory T Cell	NA	#F8CBAD
+CD8Functional	Tem	Effector Memory T Cell	NA	#C5DCB6
+CD8Functional	Temra	Terminally Differentiated Effector Memory T Cell	NA	#BDD6ED
+CD8Functional	PctKi67	PctKi67+	NA	#FDE49C

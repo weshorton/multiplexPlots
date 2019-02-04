@@ -940,15 +940,322 @@ fxnlSunburstChart <- function(data_dt, groupCol_v = "Group", calcCol_v = "Calc",
   
 } # fxnlSunburstChart
 
+flowSunburstChart <- function(data_dt, 
+                              groupCol_v = "Group",
+                              subCols_v = c("Subset1", "Subset2", "Subset3"),
+                              color_dt, 
+                              sample_v, 
+                              groups_v = NULL,
+                              title_v = "CD8 T Cell Groups",
+                              outDir_v) {
+  #' FACS Sunburst Chart
+  #' @description Sunburst chart displaying the hierarchical distribution of different immune types
+  #' @param data_dt data.table with rows = immune cell gate and columns are samples. Columns must be:
+  #' (1) Panel (2) Gate (3) Info (4) NORMALIZED.VALUES (5) SUM.ROIs (6..n) samples  ### THIS IS STILL FROM STACKED BAR - NEED TO CHANGE
+  #' @param groupCol_v character vector - name of 1st column that determines lymphoid or myeloid panel
+  #' @param subCols_v character vector - name of columns used to create levels of sunburst chart. Must be in order
+  #' @param color_dt data.table with rows = immune cell groups and columns of various metadata as well as color specifications.
+  #' @param sample_v character vector - sample or samples to plot. Must be a valid column name of data_dt.
+  #' Should be numbers (e.g. 81, 82, 83) or numbers prepended by S (e.g. S81, S82, S83)
+  #' @param groups_v character vector - one or more of the values of groupCol_v. Must be a percentage of CD8 Functional groups.
+  #' @param title_v character vector - title for plot. Default is "Immune Cell Composition"
+  #' Required columns: 
+  #' 'Subtype' - immune cell subtype (e.g. Th0, B cell, NK, etc.)
+  #' 'Gate' - gating used. Must be equal to the calcCol_v values in data_dt
+  #' 'Hex' - hex code color.
+  #' @value returns a "gg" and "ggplot" object that can be printed to console or saved to a file.
+  #' @export
+  
+  ###
+  ### SETUP ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ###
+  
+  ### Handle Sample argument
+  if (sample_v == "all") {
+    sample_v <- setdiff(colnames(data_dt), c(groupCol_v, subCols_v))
+  } # fi
+  
+  ## Handle groups argument
+  if (is.null(groups_v)) {
+    cat("groups_v argument is NULL. Selecting PctKi67 as outer level.\n")
+    cat("Please specify groups_v argument if you would like to display PctGRZB+\n")
+    groups_v <- "PctKi67"
+  }
+  
+  ## Add an "S" before the sample names, because numeric column names can cause trouble
+  newSample_v <- paste0("S", gsub("S", "", sample_v))
+  newSample_v <- gsub(" ", "-", newSample_v)
+  newSample_v <- gsub("-", ".", newSample_v)
+  
+  ## Adjust in data.table
+  whichChange_v <- which(colnames(data_dt) %in% sample_v)
+  colnames(data_dt)[whichChange_v] <- newSample_v
+  
+  ## Merge with color table - merge at each level
+  colorCols_v <- c("Hex", "Legend", "SubLegend")
+  
+  ## Lists to hold results
+  plot_ls <- legend_ls <- zero_ls <- list()
+  
+  ###
+  ### CONSTRUCT PLOT ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ###
+  
+  ## Run for each sample
+  for (i in 1:length(newSample_v)) {
+    
+    ## Get sample and data
+    currSample_v <- newSample_v[i]
+    currData_dt <- data_dt[,mget(c(groupCol_v, subCols_v, currSample_v))]
+    
+    ##
+    ## FIRST AND SECOND LEVEL ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ##
+    
+    ## Remove Subset columns with NAs.
+    currSub_v <- subCols_v[1]
+    skipSub_v <- subCols_v[-1]
+    currBase_dt <- currData_dt[is.na(get(skipSub_v)),]
+    
+    ## Check sum
+    currSum_v <- sum(currBase_dt[[currSample_v]])
+    if (currSum_v != 100) warning(sprintf("Base sum for sample %s is %f, but should be 100%%",
+                                          currSample_v, currSum_v))
+    
+    ## Get first level
+    firstLevel <- currBase_dt %>% summarize(total = sum(get(currSample_v)))
+    
+    ## Get second level
+    secondLevel <- currBase_dt
+    
+    ## Change subset to factor level
+    secondLevel[[currSub_v]] <- factor(secondLevel[[currSub_v]], levels = rev(secondLevel[[currSub_v]]))
+    
+    ## Get position in the middle of each slices (cumSum - currval/2)
+    secondLevel$runSum <- cumsum(secondLevel[[currSample_v]])
+    secondLevel$pos <- secondLevel$runSum - (secondLevel[[currSample_v]] / 2)
+    
+    ## Make display values
+    secondLevel$display <- round(secondLevel[[currSample_v]], digits = 2)
+    
+    ## Add extra column for plot factor (not required, but makes everything downstream easier)
+    secondLevel$plotFactor <- secondLevel[[currSub_v]]
+    
+    ##
+    ## Third Level ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ##
+    
+    ### Subset data
+    thirdLevel <- data_dt[(!is.na(get(subCols_v[2])) & is.na(get(subCols_v[3]))),]
+    fourthLevel <- data_dt[(!is.na(get(subCols_v[2])) & !is.na(get(subCols_v[3]))),]
+    
+    ### Empty numeric for plotting
+    thirdLevel$startPlot <- numeric(nrow(thirdLevel))
+    
+    ### Get groups
+    thirdIterGroups_v <- as.character(unique(secondLevel[[subCols_v[1]]]))
+    fourthIterGroups_v <- as.character(unique(thirdLevel[[subCols_v[2]]]))
+    
+    ### Turn into values out of the total
+    for (k in 1:length(thirdIterGroups_v)) {
+      
+      ## Subset
+      currGroup_v <- thirdIterGroups_v[k]
+      currThird_dt <- thirdLevel[get(subCols_v[1]) == currGroup_v,]
+      
+      ## Handle all NA
+      currThirdNotNA_v <- which(!is.na(currThird_dt[[currSample_v]]))
+      if (length(currThirdNotNA_v) == 0) {
+        currReplace_v <- secondLevel[get(subCols_v[1]) == currGroup_v, get(currSample_v)] / nrow(currThird_dt)
+        currReplace_v <- rep(currReplace_v, nrow(currThird_dt))
+      } else {
+        ## Check sum
+        currSum_v <- sum(currThird_dt[[currSample_v]])
+        if (currSum_v != 100) warning(sprintf("Sum for sample %s and %s subset equal to %f instead of 100.", currSample_v, currGroup_v, currSum_v))
+        currReplace_v <- (currThird_dt[[currSample_v]] / 100) * secondLevel[get(subCols_v[1]) == currGroup_v, get(currSample_v)]
+      } # fi
+      
+      ## Replace
+      thirdLevel[get(subCols_v[1]) == currGroup_v, startPlot := currReplace_v]
+      
+      ## FOURTH LEVEL
+      for (l in 1:length(fourthIterGroups_v)) {
+        
+        ## Subset
+        currSubGroup_v <- fourthIterGroups_v[l]
+        currFourth_dt <- fourthLevel[get(subCols_v[1]) == currGroup_v & get(subCols_v[2]) == currSubGroup_v,]
+        
+        ## Get opposite
+        currFourthOpposite_dt <- currFourth_dt
+        currFourthOpposite_dt[[currSample_v]] <- 100 - currFourthOpposite_dt[[currSample_v]]
+        currFourthOpposite_dt[[subCols_v[3]]] <- paste0("not_", currFourthOpposite_dt[[subCols_v[3]]])
+        
+        ## Combine
+        currFourth_dt <- rbind(currFourth_dt, currFourthOpposite_dt)
+        currFourth_dt$startPlot <- numeric(nrow(currFourth_dt))
+        
+        ## Get plot values
+        currFourthReplace_v <- (currFourth_dt[[currSample_v]] / 100) * 
+          thirdLevel[get(subCols_v[1]) == currGroup_v & get(subCols_v[2]) == currSubGroup_v, startPlot]
+        
+        ## Replace
+        currFourth_dt$startPlot <- currFourthReplace_v
+        
+        ## Final
+        if (k == 1 & l == 1) {
+          finalFourth <- currFourth_dt
+        } else {
+          finalFourth <- rbind(finalFourth, currFourth_dt)
+        } # fi
+      } # for l
+      
+    } # for k
+    
+    ## Get position in middle
+    thirdLevel$runSum <- cumsum(thirdLevel$startPlot)
+    thirdLevel$pos <- thirdLevel$runSum - thirdLevel$startPlot / 2
+    finalFourth$runSum <- cumsum(finalFourth$startPlot)
+    finalFourth$pos <- finalFourth$runSum - finalFourth$startPlot / 2
+    
+    ## Round for display
+    thirdLevel$display <- as.character(round(thirdLevel[[currSample_v]], digits = 2))
+    thirdLevel[is.na(display) | display == "0", display := '']
+    finalFourth$display <- as.character(round(finalFourth[[currSample_v]], digits = 2))
+    finalFourth[grep("^not_", get(subCols_v[3])), display := ""]
+    finalFourth[(grep("^not_", get(subCols_v[3]), invert = T) & display == "0"), display := ""]
+    
+    ## Try plotting factor
+    thirdLevel$plotFactor <- paste(thirdLevel[[ subCols_v[1] ]], thirdLevel[[ subCols_v[2] ]], sep = "_")
+    finalFourth$plotFactor <- paste(finalFourth[[ subCols_v[1] ]], finalFourth[[ subCols_v[2] ]], finalFourth[[ subCols_v[3]]], sep = "_")
+    thirdLevel$plotFactor <- factor(thirdLevel$plotFactor, levels = rev(thirdLevel$plotFactor))
+    finalFourth$plotFactor <- factor(finalFourth$plotFactor, levels = rev(finalFourth$plotFactor))
+    
+    ## Need to turn empty rows blank fill
+    thirdLevel$testFill <- as.character(thirdLevel$plotFactor) # new column
+    emptyColors_v <- as.character(thirdLevel[display == "", plotFactor]) # find rows
+    thirdLevel[plotFactor %in% emptyColors_v, testFill := paste0("empty_", testFill)] # make new factor
+    thirdLevel$testFill <- factor(thirdLevel$testFill, levels = rev(thirdLevel$testFill)) # make new factor
+    
+    currColor_dt <- color_dt
+    currColor_dt[1,1] <- currColor_dt[1,1]
+    currColor_dt[plotFactor %in% emptyColors_v, Hex := "#FFFFFF"]
+    currColor_dt[plotFactor %in% emptyColors_v, plotFactor := paste0("empty_", plotFactor)]
+    
+    ## Final tital
+    if (title_v == "") {
+      outTitle_v <- currSample_v
+    } else {
+      outTitle_v <- paste0(title_v, " - ", currSample_v)
+    }
+    
+    ###
+    ### PLOT ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###
+    
+    ## Make plot
+    first_gg <- ggplot(data = firstLevel, aes(x = 1, y = total)) +
+      geom_bar(fill = "grey", stat = "identity") +
+      coord_polar("y") + 
+      guides(fill = FALSE) +
+      # scale_fill_manual(limits = as.character(color_dt$plotFactor), values = color_dt$Hex) +
+      scale_fill_manual(limits = as.character(currColor_dt$plotFactor), values = currColor_dt$Hex) +
+      ggtitle(outTitle_v) +
+      sunburst_theme
+    
+    ## gateCol level (2)
+    second_gg <- first_gg +
+      geom_bar(data = secondLevel, aes_string(x = 2, y = currSample_v, fill = "plotFactor"),
+               stat = "identity", color = "white", position = "stack", width = 1.5) +
+      geom_text(data = secondLevel, aes(label = display, x = 2, y = pos))
+    
+    ## New test
+    third_gg <- second_gg +
+      # geom_bar(data = thirdLevel, aes_string(x = 3, y = "startPlot", fill = "plotFactor"),
+      geom_bar(data = thirdLevel, aes_string(x = 3, y = "startPlot", fill = "testFill"),
+               stat = "identity", color = "white", position = "stack", width = 1) +
+      geom_text(data = thirdLevel, aes(label = display, x = 3, y = pos))
+    
+    fourth_gg <- third_gg +
+      geom_bar(data = finalFourth, aes_string(x = 4, y = "startPlot", fill = "plotFactor"),
+               stat = "identity", color = "white", position = "stack", width = 1) +
+      geom_text(data = finalFourth, aes(label = display, x = 4, y = pos))
+    
+    ###
+    ### LEGEND ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###
+    
+    if (i == 1) {
+      ## Get rows
+      tempLegendColor_dt <- data.table("match" = c(as.character(unique(secondLevel[[subCols_v[1]]])),
+                                                   as.character(unique(thirdLevel[[subCols_v[2]]])),
+                                                   as.character(unique(fourthLevel[[subCols_v[3]]]))))
+      
+      ## Add match column to color_dt, remove plot factor, and take unique
+      newColor_dt <- currColor_dt
+      newColor_dt[1,1] <- newColor_dt[1,1]
+      newColor_dt$match <- gsub("^.*_", "", newColor_dt$plotFactor)
+      legendColorKeepCols_v <- grep("plotFactor", colnames(newColor_dt), value = T, invert = T)
+      tempColor_dt <- newColor_dt[,mget(legendColorKeepCols_v)]
+      tempColor_dt <- tempColor_dt[Legend != '',]
+      tempColor_dt <- unique(tempColor_dt)
+      
+      ## Merge
+      tempLegendColor_dt <- merge(tempLegendColor_dt, tempColor_dt, by = "match", sort = F, all = F)
+      
+      ## Remove the white ones
+      tempLegendColor_dt <- tempLegendColor_dt[!(Hex == "#FFFFFF"),]
+      
+      ## Add y value
+      tempLegendColor_dt$plot <- rep(1, nrow(tempLegendColor_dt))
+      
+      ## Make legend
+      legend_gg <- g_legend(ggplot(data = tempLegendColor_dt, aes(x = 1, y = plot, fill = Legend)) + geom_bar(stat = "identity") +
+                              scale_fill_manual(limits = as.character(tempLegendColor_dt$Legend), values = tempLegendColor_dt$Hex) +
+                              labs(fill = "Subset"))
+      
+      legend_ls[["legend"]] <- legend_gg
+      # pdf(file = file.path(outDir_v, "legend.pdf"))
+      # grid.draw(legend_gg)
+      # dev.off()
+    } # fi
+    
+    ###
+    ### ARRANGE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###
+    
+    ## Add plot to list
+    plot_ls[[currSample_v]] <- fourth_gg
+
+    ## Add legends to list
+    # if (i == 1) {
+    #   legend_ls[["legend"]] <- legend_gg
+    # }
+    # pdf(file = file.path(outDir_v, paste0(currSample_v, ".pdf")))
+    # print(fourth_gg)
+    # dev.off()
+    # 
+    # if (i == 1) {
+    #   pdf(file = file.path(outDir_v, ))
+    # }
+    
+  } # for i
+  
+  ## Final output
+  out_ls <- list("plot" = plot_ls, "legend" = legend_ls)
+  return(out_ls)
+  
+} # flowSunburstChart
+
+
 sunburstPlot <- function(sunburst_lslsgg, pct_v = T, type_v) {
   #' Display sunburst chart
   #' @description plot one or more sunburst charts with a common legend
   #' @param sunbusrt_lsgg list of lists output by sunburstChart(). List elements are:
   #' 'plot' - list of ggplot sunburst charts
   #' 'legend' - list of ggplot legend grobs
-  #' 'zero' - list of zero-count rows
+  #' 'zero' - list of zero-count rows <- WHERE IS THIS FROM?
   #' @param pct_v logical. TRUE (default) display pct on single sunburst outputs. FALSE - don't display percentages.
-  #' @param type_v character vector. Either 'immune', 'fxnl', or 'cd4'
+  #' @param type_v character vector. Either 'immune', 'fxnl', 'flow' or 'cd4'
   #' multi-sunburst plots always remove percentages.
   #' @export
   
@@ -963,12 +1270,12 @@ sunburstPlot <- function(sunburst_lslsgg, pct_v = T, type_v) {
   ### Get title text
   if (type_v == "immune") {
     titleText_v <- "Immune Cell Composition"
-  } else if (type_v == "fxnl") {
+  } else if (type_v %in% c("fxnl", "flow")) {
     titleText_v <- "CD8 T Cell Groups"
   } else if (type_v == "cd4") {
     titleText_v <- "CD4 T Cell Subsets"
   } else {
-    stop(sprintf("Incorrect value for 'type_v'. Can be: 'immune', 'fxnl', 'cd4', you have: %s", type_v))
+    stop(sprintf("Incorrect value for 'type_v'. Can be: 'immune', 'fxnl', 'flow', or 'cd4'. You have: %s", type_v))
   }
   
   ### Remove percentages
