@@ -7,7 +7,7 @@
 ################
 
 readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population", gateCol_v = "Gate", 
-                    otherCols_v = NA, convertCols_v = F, regex = "") {
+                    otherCols_v = NA, convertCols_v = F, regex_v = "") {
   #' Read in raw data from excel file
   #' @description Read in standard excel file containing ROI values for multiple slides
   #' @param input_xlsx character vector - path to input file
@@ -18,7 +18,7 @@ readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population
   #' @param convertCols_v default is FALSE. TRUE - convert 'otherCols_v' to character and all remaining columns to numeric. FALSE - keep current classes.
   #' @param regex_v regular expression used to define specific samples and their corresponding ROIs. See Details for more information.
   #' @param density_v logical. TRUE - values need to be converted to densities. FALSE - values are good as is. If TRUE, requires at least one row of
-  #' popCol_v to be named "Area" and the corresponding value in gateCol_v to specify which rows it should be used for. (reverse popcol and gatecol)
+  #' gateCol_v to be named "Area" and the corresponding value in popCol_v will match all other rows' popCol_v values that will get divided by it.
   #' @details There have been many different sample naming conventions, following the general format of sampleID_roi#. This function can take
   #' data that have already been summarized (i.e. no longer have _roi#), or can perform a summation of all ROIs. Here are a few examples of naming
   #' conventions and their corresponding regular expressions. The idea is to remove the ROI identifier to get only unique sample IDs, which can
