@@ -6,14 +6,31 @@
 ### READ RAW ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ################
 
-readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population", gateCol_v = "Gate", infoCol_v = NA) {
+readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population", gateCol_v = "Gate", 
+                    otherCols_v = NA, convertCols_v = F, regex = "") {
   #' Read in raw data from excel file
   #' @description Read in standard excel file containing ROI values for multiple slides
   #' @param input_xlsx character vector - path to input file
   #' @param sheetName_v character vector - name of sheet containing data (default is 'raw data')
   #' @param popCol_v character vector - name of first column that defines the population of cells (e.g. 'CD45+ global population'). Default is 'Population'
   #' @param gateCol_v character vector - name of the second column that contains subsets of the groups based on flow gating (e.g. 'CD45+' or 'CD3+ ICOS+'). Default is 'Gate'
-  #' @param infoCol_v only used for ML panel
+  #' @param otherCols_v only used for ML panel. Usually consists of: plot_CG; plot_CD4; order; pop_name
+  #' @param convertCols_v default is FALSE. TRUE - convert 'otherCols_v' to character and all remaining columns to numeric. FALSE - keep current classes.
+  #' @param regex_v regular expression used to define specific samples and their corresponding ROIs. See Details for more information.
+  #' @param density_v logical. TRUE - values need to be converted to densities. FALSE - values are good as is. If TRUE, requires at least one row of
+  #' popCol_v to be named "Area" and the corresponding value in gateCol_v to specify which rows it should be used for. (reverse popcol and gatecol)
+  #' @details There have been many different sample naming conventions, following the general format of sampleID_roi#. This function can take
+  #' data that have already been summarized (i.e. no longer have _roi#), or can perform a summation of all ROIs. Here are a few examples of naming
+  #' conventions and their corresponding regular expressions. The idea is to remove the ROI identifier to get only unique sample IDs, which can
+  #' then be iterated over, with their corresponding ROIs getting selected for summation.
+  #' Example format: sample names || regex || result
+  #' 1. S1_ROI1; S1_ROI2; S2_ROI1; S2_ROI2 || "_ROI[0-9]*$ || S1; S2
+  #' 2. 120.ROI.1; 121.ROI.1; 121.ROI2 || "\\.ROI.*$" || 120; 121
+  #' 3. 120 ROI 1; 128 ROI6; 138 ROI 3 || "[ ]*|ROI[ ]*[0-9]*" || 120; 128; 138
+  #' 4. syn80_1; syn80_2; syn81_1 || "syn|_[0-9]*$" || 80; 81
+  #' 5. 02_009_S; 02_009_R; 02_010_S || "" || 02_009_S; 02_009_R; 02_010_S
+  #' Note that in example 3, the names are slightly different, requiring a more complex regex. If you simplify the naming convention,
+  #' the regex will be simpler. Additionally, in example 5, summation has already been performed (hence no ROI portion), so the regex is blank.
   #' @value data.table containing same information as excel sheet
   #' @export
   
@@ -28,17 +45,19 @@ readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population
   ## Read
   input_dt <- as.data.table(read_excel(path = input_xlsx, sheet = sheetName_v))
   
-  ## Handle info col
-  if (is.na(infoCol_v)){
+  ## Handle other cols
+  if (is.na(otherCols_v)[1]){
     otherCols_v <- c(popCol_v, gateCol_v)
   } else {
-    otherCols_v <- c(popCol_v, gateCol_v, infoCol_v)
+    otherCols_v <- c(popCol_v, gateCol_v, otherCols_v)
   } # fi
   
   ## Fix column classes
   dataCols_v <- colnames(input_dt)[!(colnames(input_dt) %in% otherCols_v)]
-  for (col_v in otherCols_v) set(input_dt, j = col_v, value = as.character(input_dt[[col_v]]))
-  for (col_v in dataCols_v) set(input_dt, j = col_v, value = as.numeric(as.character(input_dt[[col_v]])))
+  if (convertCols_v) {
+    for (col_v in otherCols_v) set(input_dt, j = col_v, value = as.character(input_dt[[col_v]]))
+    for (col_v in dataCols_v) set(input_dt, j = col_v, value = as.numeric(as.character(input_dt[[col_v]])))
+  } # fi
   
   ## Remove spaces from gate names
   input_dt[[gateCol_v]] <- gsub("\\s", "", input_dt[[gateCol_v]])
@@ -56,15 +75,24 @@ readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population
     ## X120.ROI.1; X121.ROI.1; X121.ROI.2; X.125.ROI.3; X.130.ROI.3.
     ## 120 ROI 1; 128 ROI6; 138 ROI 3
     ## syn80_1; syn80_2; syn81_1
-  slides_v <- unique(gsub("_ROI[0-9]*$|\\.ROI.*$|[ ]*|ROI[ ]*[0-9]*|syn|_[0-9]*", "", dataCols_v))
+    ## 02_009_S; 02_009_R; 02_010_S; 02_001_S
+  slides_v <- unique(gsub(regex_v, "", dataCols_v))
+  #slides_v <- unique(gsub("_ROI[0-9]*$|\\.ROI.*$|[ ]*|ROI[ ]*[0-9]*|syn|_[0-9]*", "", dataCols_v))
   possible_v <- c(paste0("S", 1:1000), paste0("X", 1:1000), 1:1000)
-  if (length(which(!(slides_v %in% possible_v)))) {
-    stop(sprintf("Not all slide names are 'S[0-9]'. Please check the column names in %s sheet of %s excel file.\n",
-                 sheetName_v, input_xlsx))
+  if (length(slides_v) == length(dataCols_v)) {
+    warning(strwrap(prefix = "", initial = "", "Number of samples after name substitution is same as original. 
+                      As such, no summation will be performed. 
+                    If this is desired, ignore this warning. 
+                    Otherwise, double-check your regex to ensure samples are summed correctly."))
   } else {
-    cat(sprintf("Summarizing Regions of Interest for the following slides: %s.\n", paste(slides_v, collapse = " ")))
-  } # fi
-  
+    if (length(which(!(slides_v %in% possible_v)))) {
+      stop(sprintf("Not all slide names are 'S[0-9]'. Please check the column names in %s sheet of %s excel file.\n",
+                   sheetName_v, input_xlsx))
+    } else {
+      cat(sprintf("Summarizing Regions of Interest for the following slides: %s.\n", paste(slides_v, collapse = " ")))
+    }
+  }
+
   ## Summarize each
   sums_mat <- sapply(slides_v, function(x) {
     grep_v <- paste(paste0(x, "\\."), paste0(x, "_"), paste0(x, " "), sep = "|") # Have to have this b/c grepping for S12 would return all of S120,S121, etc.
@@ -77,17 +105,43 @@ readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population
   ## Add to summary_dt
   summary_dt <- cbind(summary_dt, sums_mat)
   
+  ## Combine
+  data_lsdt <- list("raw" = input_dt, "summary" = summary_dt)
+  samples_lsv <- list("raw" = dataCols_v, "summary" = slides_v)
+  
+  ##
+  ## HANDLE DENSITY ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ##
+  
+  if (density_v) {
+    density_lsdt <- lapply(names(data_lsdt), function(x) {
+      xx <- data_lsdt[[x]]
+      cols_v <- samples_lsv[[x]]
+      otherCols_v <- setdiff(colnames(xx), cols_v)
+      xx[, (cols_v) := lapply(.SD, function(x) x / x[1]), get(popCol_v), .SDcols = cols_v]
+      xx <- xx[get(gateCol_v) != "Area",]
+      return(xx)
+    })
+    names(density_lsdt) <- names(data_lsdt)
+  } else {
+    density_lsdt <- data_lsdt
+  }
+  
   ##
   ## GET OTHER INFO ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ##
   
   ## Get all unique groups (also remove blanks)
-  uniqGrp_v <- grep("^$", unique(input_dt[[popCol_v]]), value = T, invert = T)
+  uniqGrp_v <- grep("^$", unique(density_lsdt$raw[[popCol_v]]), value = T, invert = T)
   
   ## Get all unique individual
-  uniqInd_v <- unique(input_dt[[gateCol_v]])
+  uniqInd_v <- unique(density_lsdt$raw[[gateCol_v]])
   
-  ## Check individuals for bad names and remove them (only do this for fnctional panel)
+  ##
+  ## CHECK BAD NAMES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ##
+  
+  ## Check individuals for bad names and remove them (only do this for functional panel)
   if (popCol_v %in% c("population", "Population")){
     badStart_v <- grep("^CD|Total", uniqInd_v, invert = T)
     if (length(badStart_v) > 0) {
@@ -128,11 +182,13 @@ readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population
   } # fi
   
   ##
-  ## OUTPUT
+  ## OUTPUT ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ##
   
-  out_ls <- list("raw" = input_dt,
-                 "sum" = summary_dt,
+  out_ls <- list("rawVal" = data_lsdt$raw,
+                 "sumVal" = data_lsdt$summary,
+                 "rawDensity" = density_lsdt$raw,
+                 "sumDensity" = density_lsdt$summary,
                  "slides" = slides_v,
                  "populations" = uniqGrp_v,
                  "gates" = uniqInd_v)
