@@ -36,10 +36,14 @@ ui <- shinyUI(fluidPage(
                           
                           sidebarPanel(
                             ## Density toggle
-                            checkboxInput("fxnlDensityCheck", label = h4("Calculate Densities?"), value = TRUE),
+                            checkboxInput("fxnlDensityCheck", label = h4("Calculate Densities?"), value = FALSE),
                             ## Regex
                             textInput(inputId = "fxnlRegex",
                                       label = "Sample Name Regular Expression",
+                                      value = "[ ]*|ROI[ ]*[0-9]*"),
+                            ## Extra columns
+                            textInput(inputId = "fxnlOtherCols",
+                                      label = "Other columns not samples or gate/panel (comma-sep, no space)",
                                       value = ""),
                             ## Load file
                             fileInput(inputId = "fxnlFile", label = h4("Select Input Data File"), placeholder = "/path/to/fxnl.xlsx"),
@@ -265,6 +269,16 @@ ui <- shinyUI(fluidPage(
                         sidebarLayout(
 
                           sidebarPanel(
+                            ## Density toggle
+                            checkboxInput("mlDensityCheck", label = h4("Calculate Densities?"), value = TRUE),
+                            ## Regex
+                            textInput(inputId = "mlRegex",
+                                      label = "Sample Name Regular Expression",
+                                      value = ""),
+                            ## Extra columns
+                            textInput(inputId = "mlOtherCols",
+                                      label = "Other columns not samples or gate/panel (comma-sep, no space)",
+                                      value = "Plot_CG,Plot_CD4,Order,Pop_Name"),
                             ## Load file
                             fileInput(inputId = "mlFile", label = h4("Select Input Data File"), placeholder = "/path/to/myeloid_lymphoid.xlsx"),
                             ## Select View

@@ -71,7 +71,8 @@ server <- shinyServer(function(input, output, session) {
   ## Obtain Data
   fxnlInData <- reactive({getData(input, "fxnlFile", fxnlInFile()$datapath, readRaw,
                                   args_ls = list(density_v = input$fxnlDensityCheck,
-                                                 regex_v = input$fxnlRegex))})
+                                                 regex_v = input$fxnlRegex,
+                                                 otherCols_v = input$fxnlOtherCols))})
   
   ### Perform standard calculations
   fxnlCalcData <- reactive({calcData(fxnlInData, standardCalcs)})
@@ -440,7 +441,8 @@ server <- shinyServer(function(input, output, session) {
   ## Obtain Data
   mlInData <- reactive({getData(input, "mlFile", mlInFile()$datapath, readRaw,
                                 args_ls = list(sheetName_v = "Cohort", popCol_v = "Panel",
-                                               gateCol_v = "Gate", infoCol_v = "Info"))})
+                                               gateCol_v = "Gate", otherCols_v = input$mlOtherCols,
+                                               regex_v = input$mlRegex, density_v <- input$mlDensityCheck))})
 
   ### Perform standard calculations
   mlCalcData <- reactive({calcData(mlInData, mlCalculations)})
@@ -468,7 +470,7 @@ server <- shinyServer(function(input, output, session) {
     mlData$data <- mlAllData()[[ mlWhichData() ]]
     ## Get other info
     if (input$mlDataSelect %in% c("raw", "sum", "norm")) {
-      mlData$c1 <- "Panel"; mlData$c2 <- "Gate"; mlData$c3 <- "Info"
+      mlData$c1 <- "Panel"; mlData$c2 <- "Gate"; mlData$c3 <- strsplit(input$mlOtherCols, split = ",")[[1]]
     } else {
       mlData$c1 <- "Cell"; mlData$c2 <- "Subtype"; mlData$c3 <- NULL
     }})

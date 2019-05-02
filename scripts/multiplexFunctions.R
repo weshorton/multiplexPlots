@@ -7,7 +7,7 @@
 ################
 
 readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population", gateCol_v = "Gate", 
-                    otherCols_v = NA, convertCols_v = F, regex_v = "", density_v = F) {
+                    otherCols_v = "", convertCols_v = F, regex_v = "", density_v = F) {
   #' Read in raw data from excel file
   #' @description Read in standard excel file containing ROI values for multiple slides
   #' @param input_xlsx character vector - path to input file
@@ -46,9 +46,10 @@ readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population
   input_dt <- as.data.table(read_excel(path = input_xlsx, sheet = sheetName_v))
   
   ## Handle other cols
-  if (is.na(otherCols_v)[1]){
+  if (otherCols_v[1] == ""){
     otherCols_v <- c(popCol_v, gateCol_v)
   } else {
+    otherCols_v <- unlist(strsplit(otherCols_v, split = ","))
     otherCols_v <- c(popCol_v, gateCol_v, otherCols_v)
   } # fi
   
@@ -444,7 +445,7 @@ checkSum <- function(data_dt, slides_v, name_v = NA) {
 ### ML CALCULATION ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ######################
 
-mlCalculations <- function(sum_dt, slides_v = NULL, panelCol_v = "Panel", gateCol_v = "Gate", infoCol_v = "Info") {
+mlCalculations <- function(sum_dt, slides_v = NULL, panelCol_v = "Panel", gateCol_v = "Gate", otherCols_v = "", nameCol_v = 'Pop_Name') {
   #' Perform different calcualtions on Myeloid/Lymphoid panel summed ROIs
   #' @description Use summed region of interest values for differing populations to calculate commond percentages for plots.
   #' @param sum_dt data.table. Rows = panel gates, columns = slides. Should be output of readRaw for a myeloid/lymphoid panel
@@ -454,86 +455,98 @@ mlCalculations <- function(sum_dt, slides_v = NULL, panelCol_v = "Panel", gateCo
   #' @param slides_v character vector of slides to run calculations on. Must be value column names of sum_dt. If not specified, will use all slides.
   #' @param panelCol_v character vector - name of 1st column that determines lymphoid or myeloid panel
   #' @param gateCol_v character vector - name of 2nd column that defines the gate used
-  #' @param infoCol_v character vector - name of 3rd column that has extra info about some gates
+  #' @param otherCols_v character vector - name of other columns that has extra info about some gates
+  #' @param nameCol_v character vector - name of column that has names of populations.
   #' @value data.table
   #' @export
   
-  ## Get slides
-  if (is.null(slides_v)) slides_v <- grep("[SX][0-9]*$|[0-9]+$|^syn|_[0-9]*", colnames(sum_dt), value = T)
-  
   ## Output matrix
   out_lsv <- list()
+  
+  ## Handle other cols
+  if (otherCols_v[1] == "") {
+    otherCols_v <- NULL
+  } else {
+    otherCols_v <- unlist(strsplit(otherCols_v, split = ','))
+  }
+  
+  ## Get slides
+  if (is.null(slides_v)) slides_v <- grep("[SX][0-9]*$|[0-9]+$|^syn|_[0-9]*", setdiff(colnames(sum_dt), otherCols_v), value = T)
   
   ##
   ## NORMALIZATION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ##
   
-  for (i in 1:length(slides_v)){
-    ## Get slide
-    currSlide_v <- slides_v[i]
-    
-    ## Get numerator and denominator
-    currNum_v <- sum_dt[get(infoCol_v) == "M_on_L", get(currSlide_v)]
-    currDen_v <- sum_dt[get(infoCol_v) == "L_on_M", get(currSlide_v)]
-    
-    ## Get myeloid and lymphoid
-    currMyeloid_v <- sum_dt[get(panelCol_v) %in% c("MYELOID", "Myeloid", "myeloid"), get(currSlide_v)]
-    currLymphoid_v <- sum_dt[get(panelCol_v) %in% c("LYMPHOID", "Lymphoid", "lymphoid"), get(currSlide_v)]
-    
-    ## Normalize myeloid
-    currMyeloid_v <- currMyeloid_v * (currNum_v / currDen_v)
-    
-    ## Add back
-    sum_dt[[currSlide_v]] <- c(currMyeloid_v, currLymphoid_v)
-  } # for i
+  # for (i in 1:length(slides_v)){
+  #   ## Get slide
+  #   currSlide_v <- slides_v[i]
+  #   
+  #   ## Get numerator and denominator
+  #   currNum_v <- sum_dt[get(infoCol_v) == "M_on_L", get(currSlide_v)]
+  #   currDen_v <- sum_dt[get(infoCol_v) == "L_on_M", get(currSlide_v)]
+  #   
+  #   ## Get myeloid and lymphoid
+  #   currMyeloid_v <- sum_dt[get(panelCol_v) %in% c("MYELOID", "Myeloid", "myeloid"), get(currSlide_v)]
+  #   currLymphoid_v <- sum_dt[get(panelCol_v) %in% c("LYMPHOID", "Lymphoid", "lymphoid"), get(currSlide_v)]
+  #   
+  #   ## Normalize myeloid
+  #   currMyeloid_v <- currMyeloid_v * (currNum_v / currDen_v)
+  #   
+  #   ## Add back
+  #   sum_dt[[currSlide_v]] <- c(currMyeloid_v, currLymphoid_v)
+  # } # for i
   
   ##
   ## RATIOS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ##
   
   ## Make data.table to hold ratio information
-  ratio_dt <- data.table("Cell" = c(rep("T-Cell", 6), rep("Lymphoid", 2), "Dendritic Cell", rep("Macrophage", 4), rep("Dendritic Cell", 2), rep("Granulocyte", 2)),
-                         "Subtype" = c("Th0", "Treg", "Th17", "Th2", "Th1", "CD8 T Cells", "NK Cells", "B Cells", "myeloid other",
-                                       "CD163- myelomono", "CD163+ myelomono", "CD163- TAM", "CD163+ TAM", "immature DCs", "mature DCs", "neutrophil", "mast cell"))
+  # ratio_dt <- data.table("Cell" = c(rep("T-Cell", 6), rep("Lymphoid", 2), "Dendritic Cell", rep("Macrophage", 4), rep("Dendritic Cell", 2), rep("Granulocyte", 2)),
+  #                        "Subtype" = c("Th0", "Treg", "Th17", "Th2", "Th1", "CD8 T Cells", "NK Cells", "B Cells", "myeloid other",
+  #                                      "CD163- myelomono", "CD163+ myelomono", "CD163- TAM", "CD163+ TAM", "immature DCs", "mature DCs", "neutrophil", "mast cell"))
+  ratio_dt <- data.table("Cell" = c(rep("Lymphoid", 2), rep("T-Cell", 5), rep("Granulocyte", 2), rep("Macrophage", 4), rep("Dendritic Cell", 2)),
+                         "Subtype" = c("NK cells", "B cells", "Tregs", "Th17", "Th1", "Th2", "CD8 T cells", "Neutrophils", "Mast Cells",
+                                       "CD68+ CD14+ CSF1R-", "CD68+ CD14+ CSF1R+", "CD68+ CD14- CSF1R-", "CD68+ CD14- CSF1R+",
+                                       "Mature DCs", "Other DCs"))
   
-  cd68pos_v <- c("CD163- myelomono", "CD163+ myelomono", "CD163- TAM", "CD163+ TAM")
+  #cd68pos_v <- c("CD163- myelomono", "CD163+ myelomono", "CD163- TAM", "CD163+ TAM")
   
   ## Subset sum_dt - We want Th0, Treg, etc. But those values are listed in infoCol_v twice. 
   ## Once for main one, and another for PDL1+ version
   ## We want the main one
   goodCols_v <- grep("PDL1|PD1", sum_dt[[gateCol_v]], value = T, invert = T)
-  ratio_dt <- merge(ratio_dt, sum_dt[get(gateCol_v) %in% goodCols_v, mget(c(infoCol_v, slides_v))], 
-                    by.x = "Subtype", by.y = infoCol_v, sort = F, all.x = T)
+  ratio_dt <- merge(ratio_dt, sum_dt[get(gateCol_v) %in% goodCols_v, mget(c(otherCols_v, slides_v))], 
+                    by.x = "Subtype", by.y = nameCol_v, sort = F, all.x = T)
   
-  new_mat <- matrix(nrow = 6, ncol = length(slides_v))
-  
-  for (i in 1:length(slides_v)){
-    
-    ## Get slide
-    currSlide_v <- slides_v[i]
-    
-    ## Percent CD45
-    ratio_dt[[currSlide_v]] <- ratio_dt[[currSlide_v]] / sum_dt[get(panelCol_v) %in% c("LYMPHOID", "Lymphoid", "lymphoid") &
-                                                                   get(gateCol_v) == "CD45+", get(currSlide_v)]
-    
-    ## Other ratios
-    new_mat[1, i] <- ratio_dt[Subtype == "Th1", get(currSlide_v)] / ratio_dt[Subtype == "Th2", get(currSlide_v)]
-    new_mat[2, i] <- ratio_dt[Subtype == "NK Cells", get(currSlide_v)] / ratio_dt[Subtype == "Treg", get(currSlide_v)]
-    new_mat[3, i] <- ratio_dt[Subtype == "Th1", get(currSlide_v)] / ratio_dt[Subtype == "Treg", get(currSlide_v)]
-    new_mat[4, i] <- ratio_dt[Subtype == "CD8 T Cells", get(currSlide_v)] / sum(ratio_dt[Subtype %in% cd68pos_v, get(currSlide_v)])
-    new_mat[5, i] <- ratio_dt[Subtype == "CD163- TAM", get(currSlide_v)] / ratio_dt[Subtype == "CD163+ TAM", get(currSlide_v)]
-    new_mat[6, i] <- ratio_dt[Subtype == "mature DCs", get(currSlide_v)] / ratio_dt[Subtype == "immature DCs", get(currSlide_v)]
-    
-  } # for i
-
-  ## Add Subtype and Cell columns
-  ratioNames_v <- c("Th1:Th2", "NK:Treg", "Th1:Treg", "CD8:CD68+", "CD163-:CD163+ TAMs", "Mature:immature DCs")
-  cellNames_v <- rep(NA, 6)
-  new_mat <- cbind(ratioNames_v, cellNames_v, new_mat)
-  colnames(new_mat) <- c("Subtype", "Cell", slides_v)
-  
-  ## Add to ratio data
-  ratio_dt <- rbind(ratio_dt, new_mat)
+  # new_mat <- matrix(nrow = 6, ncol = length(slides_v))
+  # 
+  # for (i in 1:length(slides_v)){
+  #   
+  #   ## Get slide
+  #   currSlide_v <- slides_v[i]
+  #   
+  #   ## Percent CD45
+  #   ratio_dt[[currSlide_v]] <- ratio_dt[[currSlide_v]] / sum_dt[get(panelCol_v) %in% c("LYMPHOID", "Lymphoid", "lymphoid") &
+  #                                                                  get(gateCol_v) == "CD45+", get(currSlide_v)]
+  #   
+  #   ## Other ratios
+  #   new_mat[1, i] <- ratio_dt[Subtype == "Th1", get(currSlide_v)] / ratio_dt[Subtype == "Th2", get(currSlide_v)]
+  #   new_mat[2, i] <- ratio_dt[Subtype == "NK Cells", get(currSlide_v)] / ratio_dt[Subtype == "Treg", get(currSlide_v)]
+  #   new_mat[3, i] <- ratio_dt[Subtype == "Th1", get(currSlide_v)] / ratio_dt[Subtype == "Treg", get(currSlide_v)]
+  #   new_mat[4, i] <- ratio_dt[Subtype == "CD8 T Cells", get(currSlide_v)] / sum(ratio_dt[Subtype %in% cd68pos_v, get(currSlide_v)])
+  #   new_mat[5, i] <- ratio_dt[Subtype == "CD163- TAM", get(currSlide_v)] / ratio_dt[Subtype == "CD163+ TAM", get(currSlide_v)]
+  #   new_mat[6, i] <- ratio_dt[Subtype == "mature DCs", get(currSlide_v)] / ratio_dt[Subtype == "immature DCs", get(currSlide_v)]
+  #   
+  # } # for i
+  # 
+  # ## Add Subtype and Cell columns
+  # ratioNames_v <- c("Th1:Th2", "NK:Treg", "Th1:Treg", "CD8:CD68+", "CD163-:CD163+ TAMs", "Mature:immature DCs")
+  # cellNames_v <- rep(NA, 6)
+  # new_mat <- cbind(ratioNames_v, cellNames_v, new_mat)
+  # colnames(new_mat) <- c("Subtype", "Cell", slides_v)
+  # 
+  # ## Add to ratio data
+  # ratio_dt <- rbind(ratio_dt, new_mat)
   
   ## Fix classes
   for (col_v in slides_v) set(ratio_dt, j = col_v, value = as.numeric(ratio_dt[[col_v]]))
