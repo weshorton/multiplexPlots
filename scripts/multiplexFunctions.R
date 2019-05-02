@@ -7,7 +7,7 @@
 ################
 
 readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population", gateCol_v = "Gate", 
-                    otherCols_v = NA, convertCols_v = F, regex_v = "") {
+                    otherCols_v = NA, convertCols_v = F, regex_v = "", density_v = F) {
   #' Read in raw data from excel file
   #' @description Read in standard excel file containing ROI values for multiple slides
   #' @param input_xlsx character vector - path to input file
@@ -90,8 +90,8 @@ readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population
                    sheetName_v, input_xlsx))
     } else {
       cat(sprintf("Summarizing Regions of Interest for the following slides: %s.\n", paste(slides_v, collapse = " ")))
-    }
-  }
+    } # fi
+  } # fi
 
   ## Summarize each
   sums_mat <- sapply(slides_v, function(x) {
@@ -147,8 +147,10 @@ readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population
     if (length(badStart_v) > 0) {
       whichBad_v <- uniqInd_v[badStart_v]
       uniqInd_v <- uniqInd_v[-badStart_v]
-      input_dt <- input_dt[-badStart_v,]
-      summary_dt <- summary_dt[-badStart_v,]
+      density_lsdt$raw <- density_lsdt$raw[-badStart_v,]
+      density_lsdt$summary <- density_lsdt$summary[-badStart_v,]
+      # input_dt <- input_dt[-badStart_v,]
+      # summary_dt <- summary_dt[-badStart_v,]
       cat(sprintf("Removed %d rows with 'bad' names.\n\tIndexes: %s\n\t%s names: %s\n",
                   length(badStart_v), paste(badStart_v, collapse = "; "), gateCol_v, paste(whichBad_v, collapse = "; ")))
     } # fi
@@ -160,8 +162,10 @@ readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population
     if (length(hasPos_v) > 0) {
       whichPos_v <- uniqInd_v[hasPos_v]
       uniqInd_v[hasPos_v] <- gsub("pos", "", uniqInd_v[hasPos_v])
-      input_dt[hasPos_v, eval(gateCol_v) := uniqInd_v[hasPos_v]]
-      summary_dt[hasPos_v, eval(gateCol_v) := uniqInd_v[hasPos_v]]
+      # input_dt[hasPos_v, eval(gateCol_v) := uniqInd_v[hasPos_v]]
+      # summary_dt[hasPos_v, eval(gateCol_v) := uniqInd_v[hasPos_v]]
+      density_lsdt$raw[hasPos_v, eval(gateCol_v) := uniqInd_v[hasPos_v]]
+      density_lsdt$summary[hasPos_v, eval(gateCol_v) := uniqInd_v[hasPos_v]]
       cat(sprintf("Removed %d rows with 'pos' in the name. Please check and make sure there is still a '+'.\n\tIndexes: %s\n\t%s names: %s\n",
                   length(hasPos_v), as.character(paste(hasPos_v, collapse = "; ")),
                   gateCol_v, as.character(paste(whichPos_v, collapse = "; "))))
@@ -173,8 +177,10 @@ readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population
     if (length(hasNeg_v) > 0) {
       whichNeg_v <- uniqInd_v[hasNeg_v]
       uniqInd_v[hasNeg_v] <- gsub("neg", "", uniqInd_v[hasNeg_v])
-      input_dt[hasNeg_v, eval(gateCol_v) := uniqInd_v[hasNeg_v]]
-      summary_dt[hasNeg_v, eval(gateCol_v) := uniqInd_v[hasNeg_v]]
+      # input_dt[hasNeg_v, eval(gateCol_v) := uniqInd_v[hasNeg_v]]
+      # summary_dt[hasNeg_v, eval(gateCol_v) := uniqInd_v[hasNeg_v]]
+      density_lsdt$raw[hasNeg_v, eval(gateCol_v) := uniqInd_v[hasNeg_v]]
+      density_lsdt$summary[hasNeg_v, eval(gateCol_v) := uniqInd_v[hasNeg_v]]
       cat(sprintf("Removed %d rows with 'neg' in the name. Please check and make sure there is still a '-'.\n\tIndexes: %s\n\t%s names: %s\n",
                   length(hasNeg_v), as.character(paste(hasNeg_v, collapse = "; ")),
                   gateCol_v, as.character(paste(whichNeg_v, collapse = "; "))))
@@ -185,10 +191,8 @@ readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population
   ## OUTPUT ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ##
   
-  out_ls <- list("rawVal" = data_lsdt$raw,
-                 "sumVal" = data_lsdt$summary,
-                 "rawDensity" = density_lsdt$raw,
-                 "sumDensity" = density_lsdt$summary,
+  out_ls <- list("raw" = density_lsdt$raw,
+                 "sum" = density_lsdt$summary,
                  "slides" = slides_v,
                  "populations" = uniqGrp_v,
                  "gates" = uniqInd_v)
