@@ -69,7 +69,9 @@ server <- shinyServer(function(input, output, session) {
   fxnlInFile <- reactive({getFile(input, "fxnlFile")})
   
   ## Obtain Data
-  fxnlInData <- reactive({getData(input, "fxnlFile", fxnlInFile()$datapath, readRaw)})
+  fxnlInData <- reactive({getData(input, "fxnlFile", fxnlInFile()$datapath, readRaw,
+                                  args_ls = list(density_v = input$fxnlDensityCheck,
+                                                 regex_v = input$fxnlRegex))})
   
   ### Perform standard calculations
   fxnlCalcData <- reactive({calcData(fxnlInData, standardCalcs)})

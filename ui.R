@@ -35,6 +35,12 @@ ui <- shinyUI(fluidPage(
                         sidebarLayout(
                           
                           sidebarPanel(
+                            ## Density toggle
+                            checkboxInput("fxnlDensityCheck", label = h4("Calculate Densities?"), value = TRUE),
+                            ## Regex
+                            textInput(inputId = "fxnlRegex",
+                                      label = "Sample Name Regular Expression",
+                                      value = ""),
                             ## Load file
                             fileInput(inputId = "fxnlFile", label = h4("Select Input Data File"), placeholder = "/path/to/fxnl.xlsx"),
                             ## Select View
