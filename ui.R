@@ -278,7 +278,7 @@ ui <- shinyUI(fluidPage(
                             ## Extra columns
                             textInput(inputId = "mlOtherCols",
                                       label = "Other columns not samples or gate/panel (comma-sep, no space)",
-                                      value = "Plot_CG,Plot_CD4,Order,Pop_Name"),
+                                      value = "Pop_Name"),
                             ## Load file
                             fileInput(inputId = "mlFile", label = h4("Select Input Data File"), placeholder = "/path/to/myeloid_lymphoid.xlsx"),
                             ## Select View
