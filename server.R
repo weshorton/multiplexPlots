@@ -668,7 +668,9 @@ server <- shinyServer(function(input, output, session) {
       } else if (input$mlSunGrp == "CD4 T Cell Subsets") {
         currData_dt <- mlCalcData()[["norm"]]
         currColor_dt <- tCellColors_dt
-        currCellCol_v <- "Gate"; currSubCol_v <- "Info"
+        currCellCol_v <- "Gate"; 
+        # currSubCol_v <- "Info" # Changed this to test with old version of ML
+        currSubCol_v <- "Pop_Name"
         currType_v <- "cd4"
       } else { 
         stop(sprintf("Incorrect input$mlSunGrp. Should be 'Immune Cell Composition' or 'CD4 T Cell Subsets', but is: %s", input$mlSunGrp))

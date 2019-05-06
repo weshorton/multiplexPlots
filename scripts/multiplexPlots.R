@@ -257,7 +257,7 @@ hbFxn <- function(melt_dt, calcCol_v, title_v, colors_v = c("yellow", "red")) {
 #########################
 
 stackedBar <- function(data_dt, panelCol_v = "Cell", gateCol_v = "Subtype", color_dt, sample_v,
-                       xlab_v = "CD45+ Cells", ylab_v = "% of CD45+ cells", title_v = "Immune Cell Composition") {
+                       xlab_v = "CD45+ Cells", ylab_v = bquote("Density (cells/" ~ mm^2 * ")"), title_v = "Immune Cell Composition") {
   #' Multiplex Stacked Bar Chart
   #' @description Stacked Bar chart displaying the distribution of subtypes from the lymphoid panel
   #' @param data_dt data.table with rows = immune cell gate and columns are samples. Columns must be:
@@ -294,9 +294,9 @@ stackedBar <- function(data_dt, panelCol_v = "Cell", gateCol_v = "Subtype", colo
   
   ## Make plot
   stackedBar_gg <- ggplot(data = melt_dt, aes_string(x = "variable", y = "value", fill = gateCol_v)) +
-    geom_bar(position = "fill", stat = "identity", width = 0.5) +
+    geom_bar(stat = "identity", width = 0.5) +
     scale_fill_manual(limits = as.character(melt_dt[[gateCol_v]]), values = melt_dt$Hex) +
-    labs(y = "% of CD45+ cells", x = "CD45+ Cells") + ggtitle("Immune Cell Composition") +
+    labs(y = ylab_v, x = xlab_v) + ggtitle(title_v) +
     guides(fill = guide_legend(reverse = T)) +
     stacked_theme
     
@@ -337,7 +337,7 @@ mlSunburstChart <- function(data_dt, cellCol_v = "Cell", subCol_v = "Subtype", c
   } # fi
   
   ## Add an "S" before the sample names, because numeric column names can cause trouble
-  newSample_v <- paste0("S", gsub("S", "", sample_v))
+  newSample_v <- paste0("S", gsub("^S", "", sample_v))
   
   ## Adjust in data.table
   whichChange_v <- which(colnames(data_dt) %in% sample_v)
@@ -360,8 +360,17 @@ mlSunburstChart <- function(data_dt, cellCol_v = "Cell", subCol_v = "Subtype", c
     ## Handle title
     title_v <- ifelse(is.null(title_v), "CD4 T Cell Subsets", title_v)
     
-    ## Merge with color table
-    data_dt <- merge(data_dt, color_dt[,mget(c("SubType", "Hex"))], by.x = subCol_v, by.y = "SubType", sort = F)
+    ## Merge with color table - this is for new data
+    merge1_dt <- merge(data_dt, color_dt[,mget(c("SubType", "Hex"))], by.x = subCol_v, by.y = "SubType", sort = F)
+    temp_dt <- color_dt; temp_dt[1,1] <- temp_dt[1,1]
+    temp_dt$SubType <- paste0("PD1+ ", temp_dt$SubType)
+    merge2_dt <- merge(data_dt, temp_dt[,mget(c("SubType", "Hex"))], by.x = subCol_v, by.y = "SubType", sort = F)
+    
+    ## Combine
+    data_dt <- rbind(merge1_dt, merge2_dt)
+    
+    ## Merge with color table (this works for old data)
+    #data_dt <- merge(data_dt, color_dt[,mget(c("SubType", "Hex"))], by.x = subCol_v, by.y = "SubType", sort = F)
     panelHex_v <- gateHex_v <- hexCols_v <- "Hex"
     
   } else {
@@ -405,9 +414,9 @@ mlSunburstChart <- function(data_dt, cellCol_v = "Cell", subCol_v = "Subtype", c
     ## Preparation Calculations for 'cd4' version
     if (type_v == "cd4") {
       ## Split
-      pd1Rows_v <- grep("PD1|PDL1", currData_dt[[cellCol_v]])
+      pd1Rows_v <- grep("PD1|PDL1", currData_dt[[cellCol_v]]) 
       temp_dt <- currData_dt[-pd1Rows_v,]
-      pd1_dt <- currData_dt[pd1Rows_v,]
+      pd1_dt <- currData_dt[pd1Rows_v,]; pd1_dt[[subCol_v]] <- gsub("PD1\\+ ", "", pd1_dt[[subCol_v]])
       if ((pd1_dt[,.N]+temp_dt[,.N]) != currData_dt[,.N]) stop("Incorrect division of PD1 and non-PD1 rows")
       currData_dt <- merge(temp_dt, pd1_dt[,mget(c(subCol_v, currSample_v))], by = subCol_v, sort = F, suffixes = c("", "_PD1"))
       pd1Col_v <- paste0(currSample_v, "_PD1")
@@ -417,6 +426,10 @@ mlSunburstChart <- function(data_dt, cellCol_v = "Cell", subCol_v = "Subtype", c
       pd1Col_v <- NULL
       secondGetCols_v <- c(cellCol_v, panelHex_v, "Sum")
     }
+    
+    ###
+    ### STOPPED HERE!!!!! NEED TO CHECK THE CALCULATIONS BELOW
+    ###
     
     ## Get first level (overall sum)
     firstLevel <- currData_dt %>% summarize(total = sum(get(currSample_v)))
@@ -642,17 +655,28 @@ mlSunburstChart <- function(data_dt, cellCol_v = "Cell", subCol_v = "Subtype", c
     
     ## panelCol level (2)
     fillCol_v <- ifelse(type_v == "cd4", subCol_v, cellCol_v)
-    second_gg <- first_gg +
-      geom_bar(data = secondLevel, aes_string(x = 2, y = "Sum", fill = fillCol_v), 
-               stat = "identity", color = "white", position = "stack") +
-      geom_text(data = secondLevel, aes(label = round(Pct, digits = 1), x = 2, y = pos))
+    if (type_v == "cd4") {
+      second_gg <- ggplot(data = secondLevel, aes_string(x = 1, y = "Sum", fill = fillCol_v)) +
+        geom_bar(stat = "identity", width = 3) +
+        coord_polar("y") +
+        guides(fill = F) +
+        scale_fill_manual(limits = plotColor_dt$Label, values = plotColor_dt$Hex) +
+        ggtitle(paste0(title_v, " - ", currSample_v)) +
+        sunburst_theme
+    } else {
+      second_gg <- first_gg +
+        geom_bar(data = secondLevel, aes_string(x = 2, y = "Sum", fill = fillCol_v), 
+                 stat = "identity", color = "white", position = "stack") +
+        geom_text(data = secondLevel, aes(label = round(Pct, digits = 1), x = 2, y = pos))
+    }
     
     ## gateCol level (3)
     currY_v <- ifelse(type_v == "cd4", pd1Col_v, currSample_v)
+    currX_v <- ifelse(type_v == "cd4", 3, 3)
     pctFillCol_v <- ifelse(type_v == "cd4", "plotFactor", subCol_v)
     third_gg <- second_gg +
-      geom_bar(data = thirdLevel, aes_string(x = 3, y = currY_v, fill = pctFillCol_v), 
-               stat = "identity", color = "white", position = "stack") +
+      geom_bar(data = thirdLevel, aes_string(x = currX_v, y = currY_v, fill = pctFillCol_v), 
+               stat = "identity", color = "white", position = "stack", width = 0.5) +
       geom_text(data = thirdLevel, aes(label = display, x = Xaxis, y = newPos)) +
       geom_segment(data = thirdLevel, aes(x = 3, y = pos, xend = Xend, yend = newPos))
     

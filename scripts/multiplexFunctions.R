@@ -471,7 +471,7 @@ mlCalculations <- function(sum_dt, slides_v = NULL, panelCol_v = "Panel", gateCo
   }
   
   ## Get slides
-  if (is.null(slides_v)) slides_v <- grep("[SX][0-9]*$|[0-9]+$|^syn|_[0-9]*", setdiff(colnames(sum_dt), otherCols_v), value = T)
+  if (is.null(slides_v)) slides_v <- grep("[SX][0-9]*$|[0-9]+$|^syn|_[0-9]*", setdiff(colnames(sum_dt), c(otherCols_v, nameCol_v)), value = T)
   
   ##
   ## NORMALIZATION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -505,7 +505,7 @@ mlCalculations <- function(sum_dt, slides_v = NULL, panelCol_v = "Panel", gateCo
   #                        "Subtype" = c("Th0", "Treg", "Th17", "Th2", "Th1", "CD8 T Cells", "NK Cells", "B Cells", "myeloid other",
   #                                      "CD163- myelomono", "CD163+ myelomono", "CD163- TAM", "CD163+ TAM", "immature DCs", "mature DCs", "neutrophil", "mast cell"))
   ratio_dt <- data.table("Cell" = c(rep("Lymphoid", 2), rep("T-Cell", 5), rep("Granulocyte", 2), rep("Macrophage", 4), rep("Dendritic Cell", 2)),
-                         "Subtype" = c("NK cells", "B cells", "Tregs", "Th17", "Th1", "Th2", "CD8 T cells", "Neutrophils", "Mast Cells",
+                         "Subtype" = c("NK cells", "B cells", "Treg", "Th17", "Th1", "Th2", "CD8 T cells", "Neutrophils", "Mast Cells",
                                        "CD68+ CD14+ CSF1R-", "CD68+ CD14+ CSF1R+", "CD68+ CD14- CSF1R-", "CD68+ CD14- CSF1R+",
                                        "Mature DCs", "Other DCs"))
   
@@ -515,20 +515,21 @@ mlCalculations <- function(sum_dt, slides_v = NULL, panelCol_v = "Panel", gateCo
   ## Once for main one, and another for PDL1+ version
   ## We want the main one
   goodCols_v <- grep("PDL1|PD1", sum_dt[[gateCol_v]], value = T, invert = T)
-  ratio_dt <- merge(ratio_dt, sum_dt[get(gateCol_v) %in% goodCols_v, mget(c(otherCols_v, slides_v))], 
+  ratio_dt <- merge(ratio_dt, sum_dt[get(gateCol_v) %in% goodCols_v, mget(c(otherCols_v, nameCol_v, slides_v))], 
                     by.x = "Subtype", by.y = nameCol_v, sort = F, all.x = T)
   
   # new_mat <- matrix(nrow = 6, ncol = length(slides_v))
   # 
   # for (i in 1:length(slides_v)){
-  #   
+  # 
   #   ## Get slide
   #   currSlide_v <- slides_v[i]
-  #   
-  #   ## Percent CD45
+  # 
+  #   ## Percent CD45 - older version
   #   ratio_dt[[currSlide_v]] <- ratio_dt[[currSlide_v]] / sum_dt[get(panelCol_v) %in% c("LYMPHOID", "Lymphoid", "lymphoid") &
   #                                                                  get(gateCol_v) == "CD45+", get(currSlide_v)]
-  #   
+  #   ratio_dt[[currSlide_v]] <- ratio_dt[[currSlide_v]] / sum_dt[get(gateCol_v) == "CD45+", get(currSlide_v)]
+  # 
   #   ## Other ratios
   #   new_mat[1, i] <- ratio_dt[Subtype == "Th1", get(currSlide_v)] / ratio_dt[Subtype == "Th2", get(currSlide_v)]
   #   new_mat[2, i] <- ratio_dt[Subtype == "NK Cells", get(currSlide_v)] / ratio_dt[Subtype == "Treg", get(currSlide_v)]
@@ -536,7 +537,7 @@ mlCalculations <- function(sum_dt, slides_v = NULL, panelCol_v = "Panel", gateCo
   #   new_mat[4, i] <- ratio_dt[Subtype == "CD8 T Cells", get(currSlide_v)] / sum(ratio_dt[Subtype %in% cd68pos_v, get(currSlide_v)])
   #   new_mat[5, i] <- ratio_dt[Subtype == "CD163- TAM", get(currSlide_v)] / ratio_dt[Subtype == "CD163+ TAM", get(currSlide_v)]
   #   new_mat[6, i] <- ratio_dt[Subtype == "mature DCs", get(currSlide_v)] / ratio_dt[Subtype == "immature DCs", get(currSlide_v)]
-  #   
+  # 
   # } # for i
   # 
   # ## Add Subtype and Cell columns
