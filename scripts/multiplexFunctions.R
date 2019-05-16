@@ -24,7 +24,7 @@ readRaw <- function(input_xlsx, sheetName_v = "raw data", popCol_v = "Population
   #' conventions and their corresponding regular expressions. The idea is to remove the ROI identifier to get only unique sample IDs, which can
   #' then be iterated over, with their corresponding ROIs getting selected for summation.
   #' Example format: sample names || regex || result
-  #' 1. S1_ROI1; S1_ROI2; S2_ROI1; S2_ROI2 || "_ROI[0-9]*$ || S1; S2
+  #' 1. S1_ROI1; S1_ROI2; S2_ROI1; S2_ROI2 || "_ROI[0-9]*$" || S1; S2
   #' 2. 120.ROI.1; 121.ROI.1; 121.ROI2 || "\\.ROI.*$" || 120; 121
   #' 3. 120 ROI 1; 128 ROI6; 138 ROI 3 || "[ ]*|ROI[ ]*[0-9]*" || 120; 128; 138
   #' 4. syn80_1; syn80_2; syn81_1 || "syn|_[0-9]*$" || 80; 81

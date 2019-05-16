@@ -421,6 +421,7 @@ mlSunburstChart <- function(data_dt, cellCol_v = "Cell", subCol_v = "Subtype", c
       currData_dt <- merge(temp_dt, pd1_dt[,mget(c(subCol_v, currSample_v))], by = subCol_v, sort = F, suffixes = c("", "_PD1"))
       pd1Col_v <- paste0(currSample_v, "_PD1")
       currData_dt[, "PctPD-1+" := (get(pd1Col_v) / get(currSample_v))*100]
+      currData_dt[is.na(`PctPD-1+`), "PctPD-1+" := 0]
       secondGetCols_v <- c(cellCol_v, subCol_v, panelHex_v, "Sum", "PctPD-1+")
     } else {
       pd1Col_v <- NULL
