@@ -12,7 +12,8 @@
 ####################
 
 ### Source bioconductor installer
-suppressMessages(source("https://bioconductor.org/biocLite.R"))
+library(BiocManager)
+#suppressMessages(source("https://bioconductor.org/biocLite.R"))
 
 ### Required libraries
 libraries_v <- c("shiny", "data.table", "DT", "gridExtra", 
@@ -30,7 +31,7 @@ if (length(missingPackages_v) > 0) {
     if (x %in% cranPackages_v) {
       install.packages(x, repos = "http://cran.us.r-project.org")           # base installer if CRAN package
     } else {
-      biocLite(x, ask = F, suppressUpdates = T)                             # biocLite if bioconductor package
+      BiocManager::install(x, ask = F, suppressUpdates = T)                             # biocLite if bioconductor package
     } # fi
   })
 } # fi
